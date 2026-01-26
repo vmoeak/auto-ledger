@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+  android:layout_width="match_parent"
+  android:layout_height="wrap_content"
+  android:orientation="vertical"
+  android:padding="16dp">
+
+  <EditText
+    android:id="@+id/timeLocal"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:hint="time_local" />
+
+  <EditText
+    android:id="@+id/app"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:hint="app (WeChat/Alipay/Bank/Unknown)"
+    android:layout_marginTop="8dp" />
+
+  <EditText
+    android:id="@+id/amount"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:hint="amount (negative expense)"
+    android:inputType="numberDecimal|numberSigned"
+    android:layout_marginTop="8dp" />
+
+  <EditText
+    android:id="@+id/currency"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:hint="currency"
+    android:layout_marginTop="8dp" />
+
+  <EditText
+    android:id="@+id/merchant"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:hint="merchant"
+    android:layout_marginTop="8dp" />
+
+  <EditText
+    android:id="@+id/note"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:hint="note"
+    android:layout_marginTop="8dp" />
+
+  <TextView
+    android:id="@+id/confidence"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:text="confidence:"
+    android:layout_marginTop="12dp" />
+
+</LinearLayout>

@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+  android:layout_width="match_parent"
+  android:layout_height="match_parent">
+
+  <LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <TextView
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:text="Auto Ledger"
+      android:textStyle="bold"
+      android:textSize="22sp" />
+
+    <TextView
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="8dp"
+      android:text="1) Set API base URL + key\n2) Choose ledger.csv location\n3) Enable overlay button (optional)\n4) Use QS tile or overlay to capture payment success screen"
+      />
+
+    <EditText
+      android:id="@+id/baseUrl"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:hint="OpenAI-compatible Base URL (default https://api.openai.com)"
+      android:layout_marginTop="16dp" />
+
+    <EditText
+      android:id="@+id/apiKey"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:hint="API Key (stored encrypted)"
+      android:inputType="textPassword"
+      android:layout_marginTop="8dp" />
+
+    <EditText
+      android:id="@+id/model"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:hint="Model (e.g. gpt-4.1-mini)"
+      android:layout_marginTop="8dp" />
+
+    <Button
+      android:id="@+id/saveConfig"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:text="Save settings"
+      android:layout_marginTop="8dp" />
+
+    <Button
+      android:id="@+id/pickLedger"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:text="Choose ledger.csv (Storage Access Framework)"
+      android:layout_marginTop="8dp" />
+
+    <Button
+      android:id="@+id/requestCapturePerm"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:text="Authorize screen capture"
+      android:layout_marginTop="8dp" />
+
+    <Button
+      android:id="@+id/toggleOverlay"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:text="Toggle floating button"
+      android:layout_marginTop="8dp" />
+
+    <Button
+      android:id="@+id/testCapture"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:text="Test capture now"
+      android:layout_marginTop="16dp" />
+
+    <TextView
+      android:id="@+id/status"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:text="Status:"
+      android:layout_marginTop="16dp" />
+
+  </LinearLayout>
+</ScrollView>
