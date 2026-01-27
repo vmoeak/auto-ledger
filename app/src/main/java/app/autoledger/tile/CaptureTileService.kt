@@ -26,7 +26,9 @@ class CaptureTileService : TileService() {
   override fun onClick() {
     super.onClick()
     Log.i(TAG, "QS tile clicked")
+
     // Trigger Accessibility flow via broadcast (so we can read the current screen text).
+    // NOTE: We intentionally do NOT start any Activity here. Some devices show a visible "app jump".
     try {
       sendBroadcast(Intent(app.autoledger.core.Actions.ACTION_TRIGGER_LEDGER)
         .setPackage(packageName)
@@ -35,22 +37,13 @@ class CaptureTileService : TileService() {
       Log.e(TAG, "broadcast trigger failed", e)
     }
 
-    // Collapse panel reliably via trampoline activity.
-    val i = Intent(this, app.autoledger.ui.TriggerActivity::class.java)
-      .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-
-    val pi = PendingIntent.getActivity(
-      this,
-      0,
-      i,
-      PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-    )
-
+    // Best-effort collapse without launching UI (may be ignored by system).
     try {
-      startActivityAndCollapse(pi)
-    } catch (e: Throwable) {
-      Log.e(TAG, "startActivityAndCollapse(PendingIntent) failed", e)
-    }
+      this@CaptureTileService.qsTile?.let {
+        it.state = Tile.STATE_ACTIVE
+        it.updateTile()
+      }
+    } catch (_: Throwable) {}
   }
 
   private fun postDebugNotification(msg: String) {
