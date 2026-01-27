@@ -6,6 +6,7 @@ import android.media.projection.MediaProjectionManager
 import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -15,6 +16,8 @@ import app.autoledger.databinding.ActivityMainBinding
 import app.autoledger.overlay.OverlayService
 
 class MainActivity : AppCompatActivity() {
+
+  private val TAG = "AutoLedger/Main"
 
   private lateinit var b: ActivityMainBinding
   private lateinit var cfg: AppConfig
@@ -54,6 +57,7 @@ class MainActivity : AppCompatActivity() {
       cfg.baseUrl = b.baseUrl.text?.toString() ?: ""
       cfg.apiKey = b.apiKey.text?.toString() ?: ""
       cfg.model = b.model.text?.toString() ?: ""
+      Log.i(TAG, "Saved config baseUrl=${cfg.baseUrl} model=${cfg.model} apiKeySet=${cfg.apiKey.isNotBlank()}")
       toast("Saved")
       updateStatus()
     }
@@ -82,6 +86,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     b.testCapture.setOnClickListener {
+      Log.i(TAG, "Test Capture clicked")
       startActivity(Intent(this, CaptureActivity::class.java))
     }
 

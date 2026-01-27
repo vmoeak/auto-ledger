@@ -12,6 +12,7 @@ import android.media.projection.MediaProjectionManager
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import android.view.LayoutInflater
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -27,20 +28,26 @@ import java.util.Locale
 
 class CaptureActivity : AppCompatActivity() {
 
+  private val TAG = "AutoLedger/Capture"
+
   private lateinit var cfg: AppConfig
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
+    Log.i(TAG, "onCreate")
     cfg = AppConfig(this)
+    Log.i(TAG, "cfg baseUrl=${cfg.baseUrl} model=${cfg.model} apiKeySet=${cfg.apiKey.isNotBlank()} ledgerSet=${cfg.ledgerUri != null}")
 
     // Minimal checks
     if (cfg.apiKey.isBlank()) {
+      Log.w(TAG, "missing apiKey")
       toast("API key missing")
       finish()
       return
     }
     val ledgerUri = cfg.ledgerUri
     if (ledgerUri == null) {
+      Log.w(TAG, "missing ledgerUri")
       toast("ledger.csv missing (choose file in app)")
       finish()
       return
@@ -48,22 +55,33 @@ class CaptureActivity : AppCompatActivity() {
     val resultData = CapturePermissionStore.resultData
     val resultCode = CapturePermissionStore.resultCode
     if (resultData == null || resultCode == null) {
+      Log.w(TAG, "missing capture permission (resultData/resultCode null)")
       toast("Capture permission missing. Open app and tap 'Authorize screen capture'.")
       finish()
       return
     }
 
+    Log.i(TAG, "starting captureOnce")
     captureOnce(resultCode, resultData)
   }
 
   private fun captureOnce(resultCode: Int, resultData: android.content.Intent) {
+    Log.i(TAG, "captureOnce: getMediaProjection")
     val mgr = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
-    val projection: MediaProjection = mgr.getMediaProjection(resultCode, resultData)
+    val projection: MediaProjection = try {
+      mgr.getMediaProjection(resultCode, resultData)
+    } catch (e: Exception) {
+      Log.e(TAG, "getMediaProjection failed", e)
+      toast("Capture start failed: ${e.message}")
+      finish()
+      return
+    }
 
     val metrics = resources.displayMetrics
     val width = metrics.widthPixels
     val height = metrics.heightPixels
     val dpi = metrics.densityDpi
+    Log.i(TAG, "displayMetrics width=$width height=$height dpi=$dpi")
 
     val reader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 2)
     var vDisplay: VirtualDisplay? = null
@@ -72,40 +90,66 @@ class CaptureActivity : AppCompatActivity() {
 
     reader.setOnImageAvailableListener({ r ->
       val image = r.acquireLatestImage() ?: return@setOnImageAvailableListener
-      val planes = image.planes
-      val buffer: ByteBuffer = planes[0].buffer
-      val pixelStride = planes[0].pixelStride
-      val rowStride = planes[0].rowStride
-      val rowPadding = rowStride - pixelStride * width
+      Log.i(TAG, "onImageAvailable")
+      try {
+        val planes = image.planes
+        val buffer: ByteBuffer = planes[0].buffer
+        val pixelStride = planes[0].pixelStride
+        val rowStride = planes[0].rowStride
+        val rowPadding = rowStride - pixelStride * width
+        Log.i(TAG, "image plane pixelStride=$pixelStride rowStride=$rowStride rowPadding=$rowPadding bufRemaining=${buffer.remaining()}")
 
-      val bmp = Bitmap.createBitmap(width + rowPadding / pixelStride, height, Bitmap.Config.ARGB_8888)
-      bmp.copyPixelsFromBuffer(buffer)
-      image.close()
+        // Important on some devices: buffer position may not be 0
+        try { buffer.rewind() } catch (_: Exception) {}
 
-      // Crop to screen size
-      val cropped = Bitmap.createBitmap(bmp, 0, 0, width, height)
+        val bmp = Bitmap.createBitmap(width + rowPadding / pixelStride, height, Bitmap.Config.ARGB_8888)
+        bmp.copyPixelsFromBuffer(buffer)
 
-      // Cleanup
-      try { reader.setOnImageAvailableListener(null, null) } catch (_: Exception) {}
-      vDisplay?.release()
-      projection.stop()
+        // Crop to screen size
+        val cropped = Bitmap.createBitmap(bmp, 0, 0, width, height)
+        bmp.recycle()
 
-      // Process
-      handler.post {
-        parseAndConfirm(cropped)
+        // Cleanup
+        try { reader.setOnImageAvailableListener(null, null) } catch (_: Exception) {}
+        vDisplay?.release()
+        projection.stop()
+
+        // Process
+        handler.post { parseAndConfirm(cropped) }
+      } catch (e: Exception) {
+        Log.e(TAG, "capture pipeline failed", e)
+        // Cleanup + show error instead of crashing
+        try { reader.setOnImageAvailableListener(null, null) } catch (_: Exception) {}
+        try { vDisplay?.release() } catch (_: Exception) {}
+        try { projection.stop() } catch (_: Exception) {}
+        handler.post {
+          toast("Capture failed: ${e.message}")
+          finish()
+        }
+      } finally {
+        try { image.close() } catch (_: Exception) {}
       }
     }, handler)
 
-    vDisplay = projection.createVirtualDisplay(
-      "auto-ledger",
-      width,
-      height,
-      dpi,
-      DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
-      reader.surface,
-      null,
-      handler
-    )
+    Log.i(TAG, "createVirtualDisplay")
+    vDisplay = try {
+      projection.createVirtualDisplay(
+        "auto-ledger",
+        width,
+        height,
+        dpi,
+        DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
+        reader.surface,
+        null,
+        handler
+      )
+    } catch (e: Exception) {
+      Log.e(TAG, "createVirtualDisplay failed", e)
+      toast("VirtualDisplay failed: ${e.message}")
+      try { projection.stop() } catch (_: Exception) {}
+      finish()
+      return
+    }
 
     // Wait a moment so the page settles.
     handler.postDelayed({
@@ -114,13 +158,16 @@ class CaptureActivity : AppCompatActivity() {
   }
 
   private fun parseAndConfirm(bitmap: Bitmap) {
-    val ledgerUri = cfg.ledgerUri ?: run { finish(); return }
+    Log.i(TAG, "parseAndConfirm: bitmap=${bitmap.width}x${bitmap.height}")
+    val ledgerUri = cfg.ledgerUri ?: run { Log.w(TAG, "ledgerUri missing at parse time"); finish(); return }
 
     val client = OpenAiCompatClient(cfg.baseUrl, cfg.apiKey, cfg.model)
 
     Thread {
       try {
+        Log.i(TAG, "calling OpenAI-compatible endpoint")
         val parsed = client.parseExpenseFromScreenshot(bitmap)
+        Log.i(TAG, "parse success confidence=${parsed.confidence} merchant=${parsed.merchant}")
 
         runOnUiThread {
           val binding = DialogConfirmBinding.inflate(LayoutInflater.from(this))
@@ -140,6 +187,7 @@ class CaptureActivity : AppCompatActivity() {
             .setNegativeButton("Cancel") { _, _ -> finish() }
             .setPositiveButton("Save") { _, _ ->
               try {
+                Log.i(TAG, "user confirmed save")
                 LedgerWriter.ensureHeader(this, ledgerUri)
 
                 val time = binding.timeLocal.text?.toString() ?: now
@@ -166,6 +214,7 @@ class CaptureActivity : AppCompatActivity() {
                 LedgerWriter.appendRow(this, ledgerUri, row)
                 toast("Saved")
               } catch (e: Exception) {
+                Log.e(TAG, "save failed", e)
                 toast("Save failed: ${e.message}")
               }
               finish()
@@ -174,6 +223,7 @@ class CaptureActivity : AppCompatActivity() {
             .show()
         }
       } catch (e: Exception) {
+        Log.e(TAG, "parse failed", e)
         runOnUiThread {
           toast("Parse failed: ${e.message}")
           finish()
