@@ -122,7 +122,6 @@ class OpenAiCompatClient(
       return json.decodeFromString(ParsedExpense.serializer(), content)
     }
   }
-  }
 
   @Serializable
   data class ParsedExpense(
