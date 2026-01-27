@@ -9,6 +9,7 @@ import android.content.Intent
 import android.os.Build
 import android.os.IBinder
 import android.util.Log
+import android.content.pm.ServiceInfo
 import androidx.core.app.NotificationCompat
 import app.autoledger.R
 
@@ -42,7 +43,13 @@ class CaptureForegroundService : Service() {
       .setCategory(NotificationCompat.CATEGORY_SERVICE)
       .build()
 
-    startForeground(NOTIF_ID, notif)
+    // Important: on Android 10+ you should specify the foreground-service type at runtime.
+    // Android 14+/15+/16 may enforce this for MediaProjection.
+    if (Build.VERSION.SDK_INT >= 29) {
+      startForeground(NOTIF_ID, notif, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION)
+    } else {
+      startForeground(NOTIF_ID, notif)
+    }
   }
 
   override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {

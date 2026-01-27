@@ -79,8 +79,10 @@ class CaptureActivity : AppCompatActivity() {
       return
     }
 
-    Log.i(TAG, "starting captureOnce")
-    captureOnce(resultCode, resultData)
+    Log.i(TAG, "starting captureOnce (delayed 200ms to ensure FGS is in foreground)")
+    Handler(Looper.getMainLooper()).postDelayed({
+      captureOnce(resultCode, resultData)
+    }, 200)
   }
 
   private fun captureOnce(resultCode: Int, resultData: android.content.Intent) {
