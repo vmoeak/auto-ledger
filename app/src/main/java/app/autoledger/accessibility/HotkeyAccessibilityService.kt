@@ -62,7 +62,15 @@ class HotkeyAccessibilityService : AccessibilityService() {
   }
 
   override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-    // not used
+    // Keep a fresh cache of current-screen text so QS tile can work even if broadcasts
+    // are missed or the service is restarted.
+    try {
+      val root = rootInActiveWindow
+      val extracted = UiTextExtractor.extract(root)
+      if (extracted.isNotBlank()) {
+        ScreenTextCache.put(this, extracted)
+      }
+    } catch (_: Exception) {}
   }
 
   override fun onInterrupt() {
