@@ -59,6 +59,14 @@ class CaptureActivity : AppCompatActivity() {
       finish()
       return
     }
+    // If AccessibilityService provided extracted text, parse directly (no MediaProjection).
+    val extractedText = intent?.getStringExtra("extractedText")
+    if (!extractedText.isNullOrBlank()) {
+      Log.i(TAG, "received extractedText len=${extractedText.length}; parsing without screen capture")
+      parseAndConfirmText(extractedText)
+      return
+    }
+
     val resultData = CapturePermissionStore.resultData
     val resultCode = CapturePermissionStore.resultCode
     if (resultData == null || resultCode == null) {
@@ -197,8 +205,83 @@ class CaptureActivity : AppCompatActivity() {
 
     Thread {
       try {
-        Log.i(TAG, "calling OpenAI-compatible endpoint")
+        Log.i(TAG, "calling OpenAI-compatible endpoint (vision)")
         val parsed = client.parseExpenseFromScreenshot(bitmap)
+        Log.i(TAG, "parse success confidence=${parsed.confidence} merchant=${parsed.merchant}")
+
+        runOnUiThread {
+          val binding = DialogConfirmBinding.inflate(LayoutInflater.from(this))
+          val now = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
+
+          binding.timeLocal.setText(parsed.time_local ?: now)
+          binding.app.setText(parsed.app ?: "Unknown")
+          binding.amount.setText(parsed.amount?.toString() ?: "")
+          binding.currency.setText(parsed.currency ?: "CNY")
+          binding.merchant.setText(parsed.merchant ?: "")
+          binding.note.setText(parsed.note ?: "")
+          binding.confidence.text = "confidence: ${parsed.confidence ?: ""}"
+
+          AlertDialog.Builder(this)
+            .setTitle("Confirm record")
+            .setView(binding.root)
+            .setNegativeButton("Cancel") { _, _ -> finish() }
+            .setPositiveButton("Save") { _, _ ->
+              try {
+                Log.i(TAG, "user confirmed save")
+                LedgerWriter.ensureHeader(this, ledgerUri)
+
+                val time = binding.timeLocal.text?.toString() ?: now
+                val app = binding.app.text?.toString() ?: "Unknown"
+                val amount = binding.amount.text?.toString() ?: ""
+                val currency = binding.currency.text?.toString() ?: "CNY"
+                val merchant = binding.merchant.text?.toString() ?: ""
+                val note = binding.note.text?.toString() ?: ""
+                val conf = parsed.confidence?.toString() ?: ""
+                val raw = parsed.raw ?: ""
+
+                val row = listOf(
+                  time,
+                  app,
+                  amount,
+                  currency,
+                  merchant,
+                  "", // category
+                  note,
+                  conf,
+                  LedgerWriter.csvEscape(raw)
+                ).joinToString(",")
+
+                LedgerWriter.appendRow(this, ledgerUri, row)
+                toast("Saved")
+              } catch (e: Exception) {
+                Log.e(TAG, "save failed", e)
+                toast("Save failed: ${e.message}")
+              }
+              finish()
+            }
+            .setOnCancelListener { finish() }
+            .show()
+        }
+      } catch (e: Exception) {
+        Log.e(TAG, "parse failed", e)
+        runOnUiThread {
+          toast("Parse failed: ${e.message}")
+          finish()
+        }
+      }
+    }.start()
+  }
+
+  private fun parseAndConfirmText(extractedText: String) {
+    Log.i(TAG, "parseAndConfirmText")
+
+    val ledgerUri = cfg.ledgerUri ?: run { Log.w(TAG, "ledgerUri missing at parse time"); finish(); return }
+    val client = OpenAiCompatClient(cfg.baseUrl, cfg.apiKey, cfg.model)
+
+    Thread {
+      try {
+        Log.i(TAG, "calling OpenAI-compatible endpoint (text)")
+        val parsed = client.parseExpenseFromText(extractedText)
         Log.i(TAG, "parse success confidence=${parsed.confidence} merchant=${parsed.merchant}")
 
         runOnUiThread {

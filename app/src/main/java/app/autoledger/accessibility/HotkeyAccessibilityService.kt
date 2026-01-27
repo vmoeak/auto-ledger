@@ -8,6 +8,7 @@ import android.view.KeyEvent
 import android.view.accessibility.AccessibilityEvent
 import android.accessibilityservice.AccessibilityService
 import app.autoledger.ui.CaptureActivity
+import android.widget.Toast
 
 /**
  * Global hotkey: long-press VOLUME_UP to trigger capture.
@@ -85,10 +86,20 @@ class HotkeyAccessibilityService : AccessibilityService() {
     }
     lastTriggerAt = now
 
-    Log.i(TAG, "triggerCapture reason=$reason")
+    // Extract text from the CURRENT screen BEFORE launching our UI.
+    val root = rootInActiveWindow
+    val extracted = UiTextExtractor.extract(root)
+    Log.i(TAG, "triggerCapture reason=$reason extractedLen=${extracted.length}")
+
+    if (extracted.isBlank()) {
+      Toast.makeText(this, "No readable text on current screen (Accessibility)", Toast.LENGTH_SHORT).show()
+      return
+    }
+
     try {
       val i = Intent(this, CaptureActivity::class.java)
       i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+      i.putExtra("extractedText", extracted)
       startActivity(i)
     } catch (e: Exception) {
       Log.e(TAG, "startActivity failed", e)

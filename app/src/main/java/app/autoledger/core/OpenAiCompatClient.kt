@@ -26,6 +26,33 @@ class OpenAiCompatClient(
 
   private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
+  fun parseExpenseFromText(extractedText: String): ParsedExpense {
+    Log.i(TAG, "parseExpenseFromText len=${extractedText.length} baseUrl=$baseUrl model=$model")
+
+    val req = JSONObject().apply {
+      put("model", model)
+      put("temperature", 0)
+      put("messages", JSONArray().apply {
+        put(JSONObject().apply {
+          put("role", "system")
+          put(
+            "content",
+            "You are an accounting extractor. Given raw UI text copied from a Chinese mobile payment success screen, extract ONE expense record. Output ONLY valid JSON, no markdown."
+          )
+        })
+        put(JSONObject().apply {
+          put("role", "user")
+          put(
+            "content",
+            "Extract JSON with keys: time_local, app (WeChat|Alipay|Bank|Unknown), amount (negative for expense), currency (CNY), merchant, note, confidence (0-1), raw.\n\nRAW_TEXT:\n" + extractedText
+          )
+        })
+      })
+    }
+
+    return postAndParse(req)
+  }
+
   fun parseExpenseFromScreenshot(bitmap: Bitmap): ParsedExpense {
     Log.i(TAG, "parseExpenseFromScreenshot bitmap=${bitmap.width}x${bitmap.height} baseUrl=$baseUrl model=$model")
     val jpgBytes = ByteArrayOutputStream().use { os ->
@@ -60,6 +87,10 @@ class OpenAiCompatClient(
       })
     }
 
+    return postAndParse(req)
+  }
+
+  private fun postAndParse(req: JSONObject): ParsedExpense {
     val body = req.toString().toRequestBody("application/json".toMediaType())
     val url = baseUrl.trimEnd('/') + "/v1/chat/completions"
     Log.i(TAG, "POST $url")
@@ -90,6 +121,7 @@ class OpenAiCompatClient(
       Log.i(TAG, "model content len=${content.length}")
       return json.decodeFromString(ParsedExpense.serializer(), content)
     }
+  }
   }
 
   @Serializable
