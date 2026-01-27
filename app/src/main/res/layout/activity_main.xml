@@ -20,7 +20,7 @@
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
       android:layout_marginTop="8dp"
-      android:text="1) Set API base URL + key\n2) Choose ledger.csv location\n3) Enable overlay button (optional)\n4) Use QS tile or overlay to capture payment success screen"
+      android:text="1) Set API base URL + key\n2) Choose ledger.csv location\n3) Enable overlay button (optional)\n4) Use QS tile / overlay / VOLUME-UP long-press (Accessibility) to capture"
       />
 
     <EditText

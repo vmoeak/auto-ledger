@@ -8,6 +8,8 @@
   <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
   <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
+  <!-- Accessibility hotkey service (declared on the service element; no runtime permission) -->
+
   <application
     android:allowBackup="true"
     android:label="Auto Ledger"
@@ -48,6 +50,18 @@
       android:name=".core.CaptureForegroundService"
       android:exported="false"
       android:foregroundServiceType="mediaProjection" />
+
+    <service
+      android:name=".accessibility.HotkeyAccessibilityService"
+      android:exported="false"
+      android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+      <intent-filter>
+        <action android:name="android.accessibilityservice.AccessibilityService" />
+      </intent-filter>
+      <meta-data
+        android:name="android.accessibilityservice"
+        android:resource="@xml/autoledger_accessibility" />
+    </service>
 
   </application>
 
