@@ -26,13 +26,19 @@ class CaptureTileService : TileService() {
   override fun onClick() {
     super.onClick()
     Log.i(TAG, "QS tile clicked")
-    postDebugNotification("QS tile clicked")
+    // Trigger Accessibility flow via broadcast (so we can read the current screen text).
+    try {
+      sendBroadcast(Intent(app.autoledger.core.Actions.ACTION_TRIGGER_LEDGER)
+        .setPackage(packageName)
+        .putExtra(app.autoledger.core.Actions.EXTRA_TRIGGER_SOURCE, "qs_tile"))
+    } catch (e: Throwable) {
+      Log.e(TAG, "broadcast trigger failed", e)
+    }
 
-    val i = Intent(this, CaptureActivity::class.java)
-      .putExtra("triggerSource", "qs_tile")
+    // Collapse panel reliably via trampoline activity.
+    val i = Intent(this, app.autoledger.ui.TriggerActivity::class.java)
       .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 
-    // Newer Android versions are more reliable with PendingIntent.
     val pi = PendingIntent.getActivity(
       this,
       0,
@@ -44,10 +50,6 @@ class CaptureTileService : TileService() {
       startActivityAndCollapse(pi)
     } catch (e: Throwable) {
       Log.e(TAG, "startActivityAndCollapse(PendingIntent) failed", e)
-      // Fallback
-      try { startActivity(i) } catch (e2: Throwable) {
-        Log.e(TAG, "startActivity fallback failed", e2)
-      }
     }
   }
 

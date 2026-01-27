@@ -47,6 +47,15 @@
       android:exported="false" />
 
     <service
+      android:name=".overlay.OverlayConfirmService"
+      android:exported="false" />
+
+    <activity
+      android:name=".ui.TriggerActivity"
+      android:exported="false"
+      android:theme="@style/Theme.AutoLedger.Transparent" />
+
+    <service
       android:name=".core.CaptureForegroundService"
       android:exported="false"
       android:foregroundServiceType="mediaProjection" />

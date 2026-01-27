@@ -7,8 +7,9 @@ import android.util.Log
 import android.view.KeyEvent
 import android.view.accessibility.AccessibilityEvent
 import android.accessibilityservice.AccessibilityService
-import app.autoledger.ui.CaptureActivity
 import android.widget.Toast
+import app.autoledger.core.Actions
+import app.autoledger.overlay.OverlayConfirmService
 
 /**
  * Global hotkey: long-press VOLUME_UP to trigger capture.
@@ -36,9 +37,28 @@ class HotkeyAccessibilityService : AccessibilityService() {
     }
   }
 
+  private val triggerReceiver = object : android.content.BroadcastReceiver() {
+    override fun onReceive(context: android.content.Context?, intent: Intent?) {
+      val src = intent?.getStringExtra(Actions.EXTRA_TRIGGER_SOURCE) ?: "qs_tile"
+      Log.i(TAG, "received broadcast trigger src=$src")
+      triggerCapture(src)
+    }
+  }
+
   override fun onServiceConnected() {
     super.onServiceConnected()
     Log.i(TAG, "service connected")
+    try {
+      registerReceiver(triggerReceiver, android.content.IntentFilter(Actions.ACTION_TRIGGER_LEDGER))
+      Log.i(TAG, "broadcast receiver registered")
+    } catch (e: Exception) {
+      Log.e(TAG, "registerReceiver failed", e)
+    }
+  }
+
+  override fun onDestroy() {
+    try { unregisterReceiver(triggerReceiver) } catch (_: Exception) {}
+    super.onDestroy()
   }
 
   override fun onAccessibilityEvent(event: AccessibilityEvent?) {
@@ -99,12 +119,12 @@ class HotkeyAccessibilityService : AccessibilityService() {
     }
 
     try {
-      val i = Intent(this, CaptureActivity::class.java)
-      i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-      i.putExtra("extractedText", extracted)
-      startActivity(i)
+      val i = Intent(this, OverlayConfirmService::class.java)
+      i.putExtra(Actions.EXTRA_TRIGGER_SOURCE, "hotkey")
+      i.putExtra(Actions.EXTRA_EXTRACTED_TEXT, extracted)
+      startService(i)
     } catch (e: Exception) {
-      Log.e(TAG, "startActivity failed", e)
+      Log.e(TAG, "startService failed", e)
     }
   }
 }

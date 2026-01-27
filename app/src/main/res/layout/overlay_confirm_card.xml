@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+  android:layout_width="320dp"
+  android:layout_height="wrap_content"
+  android:orientation="vertical"
+  android:padding="12dp"
+  android:background="#EEFFFFFF">
+
+  <TextView
+    android:id="@+id/title"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:text="Auto Ledger"
+    android:textStyle="bold"
+    android:textSize="16sp" />
+
+  <TextView
+    android:id="@+id/subtitle"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:text="Parsing…"
+    android:layout_marginTop="4dp" />
+
+  <EditText
+    android:id="@+id/timeLocal"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:hint="time_local"
+    android:layout_marginTop="8dp" />
+
+  <EditText
+    android:id="@+id/app"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:hint="app (WeChat/Alipay/Bank/Unknown)"
+    android:layout_marginTop="6dp" />
+
+  <EditText
+    android:id="@+id/amount"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:hint="amount (negative expense)"
+    android:inputType="numberDecimal|numberSigned"
+    android:layout_marginTop="6dp" />
+
+  <EditText
+    android:id="@+id/currency"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:hint="currency"
+    android:layout_marginTop="6dp" />
+
+  <EditText
+    android:id="@+id/merchant"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:hint="merchant"
+    android:layout_marginTop="6dp" />
+
+  <EditText
+    android:id="@+id/note"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:hint="note"
+    android:layout_marginTop="6dp" />
+
+  <TextView
+    android:id="@+id/confidence"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:text="confidence:"
+    android:layout_marginTop="8dp" />
+
+  <LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:layout_marginTop="10dp">
+
+    <Button
+      android:id="@+id/cancelBtn"
+      android:layout_width="0dp"
+      android:layout_height="wrap_content"
+      android:layout_weight="1"
+      android:text="Cancel" />
+
+    <Button
+      android:id="@+id/saveBtn"
+      android:layout_width="0dp"
+      android:layout_height="wrap_content"
+      android:layout_weight="1"
+      android:text="Save"
+      android:layout_marginStart="8dp" />
+  </LinearLayout>
+
+</LinearLayout>
