@@ -90,6 +90,8 @@ class HotkeyAccessibilityService : AccessibilityService() {
     val root = rootInActiveWindow
     val extracted = UiTextExtractor.extract(root)
     Log.i(TAG, "triggerCapture reason=$reason extractedLen=${extracted.length}")
+    // WARNING: logs may contain sensitive info from the current screen.
+    Log.i(TAG, "extractedText BEGIN\n$extracted\nextractedText END")
 
     if (extracted.isBlank()) {
       Toast.makeText(this, "No readable text on current screen (Accessibility)", Toast.LENGTH_SHORT).show()

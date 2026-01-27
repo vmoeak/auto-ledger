@@ -28,6 +28,8 @@ class OpenAiCompatClient(
 
   fun parseExpenseFromText(extractedText: String): ParsedExpense {
     Log.i(TAG, "parseExpenseFromText len=${extractedText.length} baseUrl=$baseUrl model=$model")
+    // WARNING: logs may contain sensitive info.
+    Log.i(TAG, "RAW_TEXT BEGIN\n${extractedText}\nRAW_TEXT END")
 
     val req = JSONObject().apply {
       put("model", model)
