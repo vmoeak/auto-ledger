@@ -42,6 +42,8 @@ class CaptureActivity : AppCompatActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
     Log.i(TAG, "onCreate")
+    val src = intent?.getStringExtra("triggerSource") ?: "(unknown)"
+    Log.i(TAG, "triggerSource=$src")
     cfg = AppConfig(this)
     Log.i(TAG, "cfg baseUrl=${cfg.baseUrl} model=${cfg.model} apiKeySet=${cfg.apiKey.isNotBlank()} ledgerSet=${cfg.ledgerUri != null}")
 
