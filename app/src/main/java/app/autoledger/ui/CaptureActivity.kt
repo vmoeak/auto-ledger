@@ -17,6 +17,7 @@ import android.view.LayoutInflater
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import app.autoledger.core.AppConfig
+import app.autoledger.core.CaptureForegroundService
 import app.autoledger.core.CapturePermissionStore
 import app.autoledger.core.LedgerWriter
 import app.autoledger.core.OpenAiCompatClient
@@ -31,6 +32,12 @@ class CaptureActivity : AppCompatActivity() {
   private val TAG = "AutoLedger/Capture"
 
   private lateinit var cfg: AppConfig
+
+  override fun onDestroy() {
+    Log.i(TAG, "onDestroy: stopping foreground service")
+    try { CaptureForegroundService.stop(this) } catch (_: Exception) {}
+    super.onDestroy()
+  }
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
@@ -57,6 +64,17 @@ class CaptureActivity : AppCompatActivity() {
     if (resultData == null || resultCode == null) {
       Log.w(TAG, "missing capture permission (resultData/resultCode null)")
       toast("Capture permission missing. Open app and tap 'Authorize screen capture'.")
+      finish()
+      return
+    }
+
+    // Android 14+ requires MediaProjection to run under a foreground service of type mediaProjection.
+    Log.i(TAG, "starting foreground service for MediaProjection")
+    try {
+      CaptureForegroundService.start(this)
+    } catch (e: Exception) {
+      Log.e(TAG, "failed to start foreground service", e)
+      toast("Foreground service start failed: ${e.message}")
       finish()
       return
     }

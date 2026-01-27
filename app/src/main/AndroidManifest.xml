@@ -4,6 +4,8 @@
   <uses-permission android:name="android.permission.INTERNET" />
   <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
   <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+  <!-- Needed on Android 13+ to show the foreground-service notification reliably -->
+  <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
   <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
   <application
@@ -41,6 +43,11 @@
     <service
       android:name=".overlay.OverlayService"
       android:exported="false" />
+
+    <service
+      android:name=".core.CaptureForegroundService"
+      android:exported="false"
+      android:foregroundServiceType="mediaProjection" />
 
   </application>
 
