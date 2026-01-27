@@ -1,7 +1,5 @@
 package app.autoledger.tile
 
-package app.autoledger.tile
-
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
