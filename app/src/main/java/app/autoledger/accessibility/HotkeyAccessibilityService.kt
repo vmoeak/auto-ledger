@@ -41,7 +41,12 @@ class HotkeyAccessibilityService : AccessibilityService() {
     override fun onReceive(context: android.content.Context?, intent: Intent?) {
       val src = intent?.getStringExtra(Actions.EXTRA_TRIGGER_SOURCE) ?: "qs_tile"
       Log.i(TAG, "received broadcast trigger src=$src")
-      triggerCapture(src)
+
+      // Delay a bit to let the QS panel collapse animation finish so rootInActiveWindow points
+      // to the underlying app.
+      handler.postDelayed({
+        triggerCapture(src)
+      }, 350)
     }
   }
 

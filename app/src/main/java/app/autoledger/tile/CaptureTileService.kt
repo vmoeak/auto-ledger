@@ -24,29 +24,27 @@ class CaptureTileService : TileService() {
     super.onClick()
     Log.i(TAG, "QS tile clicked")
 
-    // Prefer cached text (updated continuously by Accessibility events).
-    val (cached, ts) = ScreenTextCache.get(this)
-    val ageMs = System.currentTimeMillis() - ts
-    Log.i(TAG, "cachedText len=${cached.length} ageMs=$ageMs")
-
-    if (cached.isNotBlank() && ageMs < 15_000) {
-      // Directly show overlay confirm without any app switch.
-      val i = Intent(this, OverlayConfirmService::class.java)
-        .putExtra(Actions.EXTRA_TRIGGER_SOURCE, "qs_tile")
-        .putExtra(Actions.EXTRA_EXTRACTED_TEXT, cached)
-      try {
-        startService(i)
-      } catch (e: Throwable) {
-        Log.e(TAG, "startService OverlayConfirmService failed", e)
-      }
-    } else {
-      // Fallback: ask AccessibilityService to extract right now.
+    // Requirement: collapse control center FIRST, then read the current screen.
+    // We do this by launching a transparent trampoline activity via PendingIntent.
+    // TriggerActivity will broadcast ACTION_TRIGGER_LEDGER and immediately finish.
+    try {
+      val pi = android.app.PendingIntent.getActivity(
+        this,
+        0,
+        Intent(this, app.autoledger.ui.TriggerActivity::class.java)
+          .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+        android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
+      )
+      startActivityAndCollapse(pi)
+    } catch (e: Throwable) {
+      Log.e(TAG, "startActivityAndCollapse failed", e)
+      // Fallback: if collapse fails, still try to trigger.
       try {
         sendBroadcast(Intent(Actions.ACTION_TRIGGER_LEDGER)
           .setPackage(packageName)
           .putExtra(Actions.EXTRA_TRIGGER_SOURCE, "qs_tile"))
-      } catch (e: Throwable) {
-        Log.e(TAG, "broadcast trigger failed", e)
+      } catch (e2: Throwable) {
+        Log.e(TAG, "broadcast trigger failed", e2)
       }
     }
 

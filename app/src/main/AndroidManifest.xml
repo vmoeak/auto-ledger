@@ -53,6 +53,9 @@
     <activity
       android:name=".ui.TriggerActivity"
       android:exported="false"
+      android:noHistory="true"
+      android:excludeFromRecents="true"
+      android:finishOnTaskLaunch="true"
       android:theme="@style/Theme.AutoLedger.Transparent" />
 
     <service
