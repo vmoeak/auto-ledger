@@ -213,11 +213,11 @@ class CaptureActivity : AppCompatActivity() {
 
         runOnUiThread {
           val binding = DialogConfirmBinding.inflate(LayoutInflater.from(this))
-          val now = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
+          val now = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date())
 
-          binding.timeLocal.setText(parsed.time_local ?: now)
+          binding.timeLocal.setText(LedgerWriter.normalizeTime(parsed.time_local ?: now))
           binding.app.setText(parsed.app ?: "Unknown")
-          binding.amount.setText(parsed.amount?.toString() ?: "")
+          binding.amount.setText(LedgerWriter.formatAmount(parsed.amount))
           binding.currency.setText(parsed.currency ?: "CNY")
           binding.merchant.setText(parsed.merchant ?: "")
           binding.note.setText(parsed.note ?: "")
@@ -232,14 +232,14 @@ class CaptureActivity : AppCompatActivity() {
                 Log.i(TAG, "user confirmed save")
                 LedgerWriter.ensureHeader(this, ledgerUri)
 
-                val time = binding.timeLocal.text?.toString() ?: now
+                val time = LedgerWriter.normalizeTime(binding.timeLocal.text?.toString() ?: now)
                 val app = binding.app.text?.toString() ?: "Unknown"
                 val amount = binding.amount.text?.toString() ?: ""
                 val currency = binding.currency.text?.toString() ?: "CNY"
                 val merchant = binding.merchant.text?.toString() ?: ""
                 val note = binding.note.text?.toString() ?: ""
                 val conf = parsed.confidence?.toString() ?: ""
-                val raw = parsed.raw ?: ""
+                val raw = LedgerWriter.compactRaw(parsed.raw)
 
                 val row = listOf(
                   time,
@@ -288,11 +288,11 @@ class CaptureActivity : AppCompatActivity() {
 
         runOnUiThread {
           val binding = DialogConfirmBinding.inflate(LayoutInflater.from(this))
-          val now = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
+          val now = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date())
 
-          binding.timeLocal.setText(parsed.time_local ?: now)
+          binding.timeLocal.setText(LedgerWriter.normalizeTime(parsed.time_local ?: now))
           binding.app.setText(parsed.app ?: "Unknown")
-          binding.amount.setText(parsed.amount?.toString() ?: "")
+          binding.amount.setText(LedgerWriter.formatAmount(parsed.amount))
           binding.currency.setText(parsed.currency ?: "CNY")
           binding.merchant.setText(parsed.merchant ?: "")
           binding.note.setText(parsed.note ?: "")
@@ -307,14 +307,14 @@ class CaptureActivity : AppCompatActivity() {
                 Log.i(TAG, "user confirmed save")
                 LedgerWriter.ensureHeader(this, ledgerUri)
 
-                val time = binding.timeLocal.text?.toString() ?: now
+                val time = LedgerWriter.normalizeTime(binding.timeLocal.text?.toString() ?: now)
                 val app = binding.app.text?.toString() ?: "Unknown"
                 val amount = binding.amount.text?.toString() ?: ""
                 val currency = binding.currency.text?.toString() ?: "CNY"
                 val merchant = binding.merchant.text?.toString() ?: ""
                 val note = binding.note.text?.toString() ?: ""
                 val conf = parsed.confidence?.toString() ?: ""
-                val raw = parsed.raw ?: ""
+                val raw = LedgerWriter.compactRaw(parsed.raw)
 
                 val row = listOf(
                   time,

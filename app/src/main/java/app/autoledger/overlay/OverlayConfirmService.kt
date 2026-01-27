@@ -115,9 +115,9 @@ class OverlayConfirmService : Service() {
         Handler(Looper.getMainLooper()).post {
           val now = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
           subtitle.text = "Review & save"
-          timeEt.setText(parsed.time_local ?: now)
+          timeEt.setText(app.autoledger.core.LedgerWriter.normalizeTime(parsed.time_local ?: now))
           appEt.setText(parsed.app ?: "Unknown")
-          amountEt.setText(parsed.amount?.toString() ?: "")
+          amountEt.setText(app.autoledger.core.LedgerWriter.formatAmount(parsed.amount))
           currencyEt.setText(parsed.currency ?: "CNY")
           merchantEt.setText(parsed.merchant ?: "")
           noteEt.setText(parsed.note ?: "")
@@ -128,7 +128,7 @@ class OverlayConfirmService : Service() {
             try {
               LedgerWriter.ensureHeader(this, ledgerUri)
               val row = listOf(
-                (timeEt.text?.toString() ?: now),
+                LedgerWriter.normalizeTime(timeEt.text?.toString() ?: now),
                 (appEt.text?.toString() ?: "Unknown"),
                 (amountEt.text?.toString() ?: ""),
                 (currencyEt.text?.toString() ?: "CNY"),
@@ -136,7 +136,7 @@ class OverlayConfirmService : Service() {
                 "", // category
                 (noteEt.text?.toString() ?: ""),
                 (parsed.confidence?.toString() ?: ""),
-                LedgerWriter.csvEscape(parsed.raw ?: "")
+                LedgerWriter.csvEscape(LedgerWriter.compactRaw(parsed.raw))
               ).joinToString(",")
               LedgerWriter.appendRow(this, ledgerUri, row)
               toast("Saved")
