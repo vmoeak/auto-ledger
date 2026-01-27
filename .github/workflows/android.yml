@@ -29,8 +29,20 @@ jobs:
       - name: Build Debug APK
         run: ./gradlew :app:assembleDebug
 
-      - name: Upload APK
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: app-debug
           path: app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Create/Update GitHub Release (debug-latest)
+        uses: ncipollo/release-action@v1
+        with:
+          tag: debug-latest
+          name: Debug APK (latest)
+          allowUpdates: true
+          replacesArtifacts: true
+          artifacts: app/build/outputs/apk/debug/app-debug.apk
+          artifactContentType: application/vnd.android.package-archive
+          prerelease: true
+          makeLatest: false
