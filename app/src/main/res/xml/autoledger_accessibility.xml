@@ -5,4 +5,4 @@
   android:notificationTimeout="100"
   android:canRequestFilterKeyEvents="true"
   android:canRetrieveWindowContent="true"
-  android:accessibilityFlags="flagDefault" />
+  android:accessibilityFlags="flagRequestFilterKeyEvents|flagRetrieveInteractiveWindows" />
