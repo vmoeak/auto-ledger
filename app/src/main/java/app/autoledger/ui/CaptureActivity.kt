@@ -97,6 +97,18 @@ class CaptureActivity : AppCompatActivity() {
       return
     }
 
+    // Android 14+/15+/16: some devices require registering a callback before starting capture.
+    try {
+      projection.registerCallback(object : MediaProjection.Callback() {
+        override fun onStop() {
+          Log.i(TAG, "MediaProjection onStop")
+        }
+      }, Handler(Looper.getMainLooper()))
+      Log.i(TAG, "MediaProjection callback registered")
+    } catch (e: Exception) {
+      Log.e(TAG, "MediaProjection registerCallback failed", e)
+    }
+
     val metrics = resources.displayMetrics
     val width = metrics.widthPixels
     val height = metrics.heightPixels
