@@ -80,6 +80,13 @@
       android:text="Test capture now"
       android:layout_marginTop="16dp" />
 
+    <Button
+      android:id="@+id/viewStats"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:text="View Statistics"
+      android:layout_marginTop="8dp" />
+
     <TextView
       android:id="@+id/status"
       android:layout_width="match_parent"
