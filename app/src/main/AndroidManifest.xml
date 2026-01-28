@@ -55,7 +55,7 @@
       android:exported="false"
       android:noHistory="true"
       android:excludeFromRecents="true"
-      android:finishOnTaskLaunch="true"
+      android:taskAffinity=""
       android:theme="@style/Theme.AutoLedger.Transparent" />
 
     <service

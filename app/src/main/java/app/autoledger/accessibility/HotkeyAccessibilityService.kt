@@ -118,20 +118,24 @@ class HotkeyAccessibilityService : AccessibilityService() {
 
   private fun waitForNonSystemUiThenTrigger(maxWaitMs: Long) {
     val start = System.currentTimeMillis()
+    val myPkg = packageName
 
     fun poll() {
       val now = System.currentTimeMillis()
       val pkg = rootInActiveWindow?.packageName?.toString().orEmpty()
-      val isSystemUi = pkg.contains("systemui", ignoreCase = true) || pkg.contains("launcher", ignoreCase = true)
+      // Skip SystemUI, launcher, and our own app (TriggerActivity may briefly appear)
+      val shouldSkip = pkg.contains("systemui", ignoreCase = true)
+                    || pkg.contains("launcher", ignoreCase = true)
+                    || pkg == myPkg
 
-      if (!isSystemUi && pkg.isNotBlank()) {
-        Log.i(TAG, "SystemUI gone, extracting from pkg=$pkg")
+      if (!shouldSkip && pkg.isNotBlank()) {
+        Log.i(TAG, "Target app in foreground, extracting from pkg=$pkg")
         triggerCapture("qs_tile")
         return
       }
 
       if (now - start >= maxWaitMs) {
-        Log.w(TAG, "Timed out waiting for SystemUI to disappear (pkg=$pkg). Proceeding anyway.")
+        Log.w(TAG, "Timed out waiting for target app (pkg=$pkg). Proceeding anyway.")
         triggerCapture("qs_tile")
         return
       }
