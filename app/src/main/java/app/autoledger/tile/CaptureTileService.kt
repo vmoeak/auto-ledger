@@ -24,28 +24,16 @@ class CaptureTileService : TileService() {
     super.onClick()
     Log.i(TAG, "QS tile clicked")
 
-    // Requirement: collapse control center FIRST, then read the current screen.
-    // We do this by launching a transparent trampoline activity via PendingIntent.
-    // TriggerActivity will broadcast ACTION_TRIGGER_LEDGER and immediately finish.
+    // User preference: never visibly jump into the app.
+    // We cannot reliably force QS panel to collapse without launching an Activity on all devices.
+    // So we broadcast a trigger and the AccessibilityService will WAIT until SystemUI is gone
+    // (or timeout) before extracting.
     try {
-      val pi = android.app.PendingIntent.getActivity(
-        this,
-        0,
-        Intent(this, app.autoledger.ui.TriggerActivity::class.java)
-          .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-        android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
-      )
-      startActivityAndCollapse(pi)
+      sendBroadcast(Intent(Actions.ACTION_TRIGGER_LEDGER)
+        .setPackage(packageName)
+        .putExtra(Actions.EXTRA_TRIGGER_SOURCE, "qs_tile"))
     } catch (e: Throwable) {
-      Log.e(TAG, "startActivityAndCollapse failed", e)
-      // Fallback: if collapse fails, still try to trigger.
-      try {
-        sendBroadcast(Intent(Actions.ACTION_TRIGGER_LEDGER)
-          .setPackage(packageName)
-          .putExtra(Actions.EXTRA_TRIGGER_SOURCE, "qs_tile"))
-      } catch (e2: Throwable) {
-        Log.e(TAG, "broadcast trigger failed", e2)
-      }
+      Log.e(TAG, "broadcast trigger failed", e)
     }
 
     // Best-effort tile refresh.

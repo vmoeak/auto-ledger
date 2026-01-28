@@ -42,11 +42,12 @@ class HotkeyAccessibilityService : AccessibilityService() {
       val src = intent?.getStringExtra(Actions.EXTRA_TRIGGER_SOURCE) ?: "qs_tile"
       Log.i(TAG, "received broadcast trigger src=$src")
 
-      // Delay a bit to let the QS panel collapse animation finish so rootInActiveWindow points
-      // to the underlying app.
-      handler.postDelayed({
-        triggerCapture(src)
-      }, 350)
+      if (src == "qs_tile") {
+        // For QS tile: wait until SystemUI is gone before extracting.
+        waitForNonSystemUiThenTrigger(maxWaitMs = 1500L)
+      } else {
+        handler.postDelayed({ triggerCapture(src) }, 150)
+      }
     }
   }
 
@@ -109,6 +110,32 @@ class HotkeyAccessibilityService : AccessibilityService() {
     }
 
     return false
+  }
+
+  private fun waitForNonSystemUiThenTrigger(maxWaitMs: Long) {
+    val start = System.currentTimeMillis()
+
+    fun poll() {
+      val now = System.currentTimeMillis()
+      val pkg = rootInActiveWindow?.packageName?.toString().orEmpty()
+      val isSystemUi = pkg.contains("systemui", ignoreCase = true) || pkg.contains("launcher", ignoreCase = true)
+
+      if (!isSystemUi && pkg.isNotBlank()) {
+        Log.i(TAG, "SystemUI gone, extracting from pkg=$pkg")
+        triggerCapture("qs_tile")
+        return
+      }
+
+      if (now - start >= maxWaitMs) {
+        Log.w(TAG, "Timed out waiting for SystemUI to disappear (pkg=$pkg). Proceeding anyway.")
+        triggerCapture("qs_tile")
+        return
+      }
+
+      handler.postDelayed({ poll() }, 100)
+    }
+
+    handler.postDelayed({ poll() }, 100)
   }
 
   private fun triggerCapture(reason: String) {
