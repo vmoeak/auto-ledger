@@ -29,7 +29,11 @@ class CaptureTileService : TileService() {
     // then TriggerActivity broadcasts to AccessibilityService.
     try {
       val intent = Intent(this, TriggerActivity::class.java).apply {
-        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        addFlags(
+          Intent.FLAG_ACTIVITY_NEW_TASK or
+          Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS or
+          Intent.FLAG_ACTIVITY_NO_ANIMATION
+        )
         putExtra(Actions.EXTRA_TRIGGER_SOURCE, "qs_tile")
       }
 
