@@ -90,6 +90,11 @@ class MainActivity : AppCompatActivity() {
       startActivity(Intent(this, CaptureActivity::class.java))
     }
 
+    b.viewStats.setOnClickListener {
+      Log.i(TAG, "View Stats clicked")
+      startActivity(Intent(this, StatsActivity::class.java))
+    }
+
     updateStatus()
   }
 

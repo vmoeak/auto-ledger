@@ -32,6 +32,10 @@
       android:exported="false"
       android:theme="@style/Theme.AutoLedger.Transparent" />
 
+    <activity
+      android:name=".ui.StatsActivity"
+      android:exported="false" />
+
     <service
       android:name=".tile.CaptureTileService"
       android:label="Record expense"
