@@ -55,7 +55,11 @@ class HotkeyAccessibilityService : AccessibilityService() {
     super.onServiceConnected()
     Log.i(TAG, "service connected")
     try {
-      registerReceiver(triggerReceiver, android.content.IntentFilter(Actions.ACTION_TRIGGER_LEDGER))
+      registerReceiver(
+        triggerReceiver,
+        android.content.IntentFilter(Actions.ACTION_TRIGGER_LEDGER),
+        android.content.Context.RECEIVER_NOT_EXPORTED
+      )
       Log.i(TAG, "broadcast receiver registered")
     } catch (e: Exception) {
       Log.e(TAG, "registerReceiver failed", e)
