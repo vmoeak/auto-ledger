@@ -103,7 +103,7 @@ class OpenAiCompatClient(
       .addHeader("Content-Type", "application/json")
       // OpenRouter recommended headers (safe even for non-OpenRouter)
       .addHeader("HTTP-Referer", "https://auto-ledger.local")
-      .addHeader("X-Title", "Auto Ledger")
+      .addHeader("X-Title", "自动记账")
       .post(body)
       .build()
 

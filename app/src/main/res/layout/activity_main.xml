@@ -1,98 +1,191 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+  xmlns:app="http://schemas.android.com/apk/res-auto"
   android:layout_width="match_parent"
-  android:layout_height="match_parent">
+  android:layout_height="match_parent"
+  android:fillViewport="true">
 
   <LinearLayout
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:padding="16dp">
+    android:padding="20dp">
 
     <TextView
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
-      android:text="Auto Ledger"
+      android:text="@string/main_title"
       android:textStyle="bold"
-      android:textSize="22sp" />
+      android:textSize="24sp" />
 
     <TextView
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
-      android:layout_marginTop="8dp"
-      android:text="1) Set API base URL + key\n2) Choose ledger.csv location\n3) Enable overlay button (optional)\n4) Use QS tile / overlay / VOLUME-UP long-press (Accessibility) to capture"
-      />
+      android:layout_marginTop="6dp"
+      android:text="@string/main_subtitle"
+      android:textColor="@android:color/darker_gray"
+      android:lineSpacingExtra="2dp" />
 
-    <EditText
-      android:id="@+id/baseUrl"
+    <com.google.android.material.card.MaterialCardView
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
-      android:hint="OpenAI-compatible Base URL (default https://api.openai.com)"
-      android:layout_marginTop="16dp" />
+      android:layout_marginTop="16dp"
+      app:cardCornerRadius="16dp"
+      app:cardUseCompatPadding="true">
 
-    <EditText
-      android:id="@+id/apiKey"
+      <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <TextView
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:text="@string/section_ai"
+          android:textStyle="bold"
+          android:textSize="16sp" />
+
+        <com.google.android.material.textfield.TextInputLayout
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="12dp">
+
+          <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/baseUrl"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/hint_base_url"
+            android:inputType="textUri" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="8dp">
+
+          <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/apiKey"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/hint_api_key"
+            android:inputType="textPassword" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="8dp">
+
+          <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/model"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/hint_model" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.button.MaterialButton
+          android:id="@+id/saveConfig"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="12dp"
+          android:text="@string/btn_save_settings" />
+
+      </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <com.google.android.material.card.MaterialCardView
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
-      android:hint="API Key (stored encrypted)"
-      android:inputType="textPassword"
-      android:layout_marginTop="8dp" />
+      android:layout_marginTop="12dp"
+      app:cardCornerRadius="16dp"
+      app:cardUseCompatPadding="true">
 
-    <EditText
-      android:id="@+id/model"
+      <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <TextView
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:text="@string/section_ledger"
+          android:textStyle="bold"
+          android:textSize="16sp" />
+
+        <com.google.android.material.button.MaterialButton
+          android:id="@+id/pickLedger"
+          style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="12dp"
+          android:text="@string/btn_choose_ledger" />
+
+      </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <com.google.android.material.card.MaterialCardView
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
-      android:hint="Model (e.g. gpt-4.1-mini)"
-      android:layout_marginTop="8dp" />
+      android:layout_marginTop="12dp"
+      app:cardCornerRadius="16dp"
+      app:cardUseCompatPadding="true">
 
-    <Button
-      android:id="@+id/saveConfig"
-      android:layout_width="match_parent"
-      android:layout_height="wrap_content"
-      android:text="Save settings"
-      android:layout_marginTop="8dp" />
+      <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
 
-    <Button
-      android:id="@+id/pickLedger"
-      android:layout_width="match_parent"
-      android:layout_height="wrap_content"
-      android:text="Choose ledger.csv (Storage Access Framework)"
-      android:layout_marginTop="8dp" />
+        <TextView
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:text="@string/section_capture"
+          android:textStyle="bold"
+          android:textSize="16sp" />
 
-    <Button
-      android:id="@+id/requestCapturePerm"
-      android:layout_width="match_parent"
-      android:layout_height="wrap_content"
-      android:text="Authorize screen capture"
-      android:layout_marginTop="8dp" />
+        <com.google.android.material.button.MaterialButton
+          android:id="@+id/requestCapturePerm"
+          style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="12dp"
+          android:text="@string/btn_authorize_capture" />
 
-    <Button
-      android:id="@+id/toggleOverlay"
-      android:layout_width="match_parent"
-      android:layout_height="wrap_content"
-      android:text="Toggle floating button"
-      android:layout_marginTop="8dp" />
+        <com.google.android.material.button.MaterialButton
+          android:id="@+id/toggleOverlay"
+          style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="8dp"
+          android:text="@string/btn_toggle_floating" />
 
-    <Button
-      android:id="@+id/testCapture"
-      android:layout_width="match_parent"
-      android:layout_height="wrap_content"
-      android:text="Test capture now"
-      android:layout_marginTop="16dp" />
+        <com.google.android.material.button.MaterialButton
+          android:id="@+id/testCapture"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="12dp"
+          android:text="@string/btn_test_capture" />
 
-    <Button
-      android:id="@+id/viewStats"
-      android:layout_width="match_parent"
-      android:layout_height="wrap_content"
-      android:text="View Statistics"
-      android:layout_marginTop="8dp" />
+        <com.google.android.material.button.MaterialButton
+          android:id="@+id/viewStats"
+          style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="8dp"
+          android:text="@string/btn_view_stats" />
+
+      </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
 
     <TextView
       android:id="@+id/status"
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
-      android:text="Status:"
-      android:layout_marginTop="16dp" />
+      android:layout_marginTop="12dp"
+      android:text="@string/label_status"
+      android:textColor="@android:color/darker_gray" />
 
   </LinearLayout>
 </ScrollView>

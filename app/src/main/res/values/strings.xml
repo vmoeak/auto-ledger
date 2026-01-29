@@ -1,4 +1,37 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-  <string name="app_name">Auto Ledger</string>
+  <string name="app_name">自动记账</string>
+
+  <!-- Main -->
+  <string name="main_title">自动记账</string>
+  <string name="main_subtitle">把截图里的账单信息自动解析成 CSV，方便你在表格/记账工具里继续处理。</string>
+
+  <string name="section_ai">AI 解析设置</string>
+  <string name="hint_base_url">Base URL（默认：https://api.openai.com）</string>
+  <string name="hint_api_key">API Key（已加密保存）</string>
+  <string name="hint_model">模型（例如：gpt-4.1-mini）</string>
+  <string name="btn_save_settings">保存设置</string>
+
+  <string name="section_ledger">账本文件</string>
+  <string name="btn_choose_ledger">选择 ledger.csv（文件位置）</string>
+
+  <string name="section_capture">截图/悬浮按钮</string>
+  <string name="btn_authorize_capture">授权屏幕录制（用于截图）</string>
+  <string name="btn_toggle_floating">切换悬浮按钮</string>
+  <string name="btn_test_capture">立即测试截图</string>
+  <string name="btn_view_stats">查看统计</string>
+
+  <string name="label_status">状态</string>
+
+  <!-- Stats -->
+  <string name="stats_title">统计</string>
+  <string name="period_day">日</string>
+  <string name="period_month">月</string>
+  <string name="period_year">年</string>
+  <string name="summary_title">汇总</string>
+  <string name="total_expense">支出</string>
+  <string name="total_income">收入</string>
+  <string name="transaction_count">笔数</string>
+  <string name="by_merchant">按商户</string>
+  <string name="no_transactions">本周期暂无交易</string>
 </resources>

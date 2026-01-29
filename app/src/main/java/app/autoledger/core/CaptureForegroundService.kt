@@ -37,7 +37,7 @@ class CaptureForegroundService : Service() {
 
     val notif: Notification = NotificationCompat.Builder(this, CHANNEL_ID)
       .setSmallIcon(android.R.drawable.ic_menu_camera)
-      .setContentTitle("Auto Ledger")
+      .setContentTitle("自动记账")
       .setContentText("Capturing screen for expense extraction…")
       .setOngoing(true)
       .setCategory(NotificationCompat.CATEGORY_SERVICE)

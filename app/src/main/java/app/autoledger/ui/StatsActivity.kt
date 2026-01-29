@@ -65,13 +65,13 @@ class StatsActivity : AppCompatActivity() {
   private fun loadData() {
     val uri = cfg.ledgerUri
     if (uri == null) {
-      Toast.makeText(this, "No ledger file selected", Toast.LENGTH_SHORT).show()
+      Toast.makeText(this, "未选择账本文件", Toast.LENGTH_SHORT).show()
       return
     }
 
     allEntries = LedgerReader.readAll(this, uri)
     if (allEntries.isEmpty()) {
-      Toast.makeText(this, "No data found", Toast.LENGTH_SHORT).show()
+      Toast.makeText(this, "没有找到任何记录", Toast.LENGTH_SHORT).show()
     }
 
     updateStats()
@@ -168,9 +168,10 @@ class StatsActivity : AppCompatActivity() {
 
     if (merchantTotals.isEmpty()) {
       val emptyView = TextView(this).apply {
-        text = "No transactions in this period"
+        text = getString(R.string.no_transactions)
         setPadding(0, 16, 0, 16)
         gravity = Gravity.CENTER
+        setTextColor(0xFF666666.toInt())
       }
       merchantList.addView(emptyView)
     }

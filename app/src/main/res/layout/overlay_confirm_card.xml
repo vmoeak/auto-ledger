@@ -10,7 +10,7 @@
     android:id="@+id/title"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:text="Auto Ledger"
+    android:text="自动记账"
     android:textStyle="bold"
     android:textSize="16sp" />
 
@@ -18,7 +18,7 @@
     android:id="@+id/subtitle"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:text="Parsing…"
+    android:text="解析中…"
     android:layout_marginTop="4dp" />
 
   <EditText
@@ -32,14 +32,14 @@
     android:id="@+id/app"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:hint="app (WeChat/Alipay/Bank/Unknown)"
+    android:hint="来源应用（微信/支付宝/银行/未知）"
     android:layout_marginTop="6dp" />
 
   <EditText
     android:id="@+id/amount"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:hint="amount (negative expense)"
+    android:hint="金额（支出为负数）"
     android:inputType="numberDecimal|numberSigned"
     android:layout_marginTop="6dp" />
 
@@ -47,21 +47,21 @@
     android:id="@+id/currency"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:hint="currency"
+    android:hint="币种"
     android:layout_marginTop="6dp" />
 
   <EditText
     android:id="@+id/merchant"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:hint="merchant"
+    android:hint="商户"
     android:layout_marginTop="6dp" />
 
   <EditText
     android:id="@+id/note"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:hint="note"
+    android:hint="备注"
     android:layout_marginTop="6dp" />
 
   <TextView
@@ -82,14 +82,14 @@
       android:layout_width="0dp"
       android:layout_height="wrap_content"
       android:layout_weight="1"
-      android:text="Cancel" />
+      android:text="取消" />
 
     <Button
       android:id="@+id/saveBtn"
       android:layout_width="0dp"
       android:layout_height="wrap_content"
       android:layout_weight="1"
-      android:text="Save"
+      android:text="保存"
       android:layout_marginStart="8dp" />
   </LinearLayout>
 
