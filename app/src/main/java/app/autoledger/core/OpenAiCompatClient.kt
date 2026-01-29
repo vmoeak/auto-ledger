@@ -103,7 +103,8 @@ class OpenAiCompatClient(
       .addHeader("Content-Type", "application/json")
       // OpenRouter recommended headers (safe even for non-OpenRouter)
       .addHeader("HTTP-Referer", "https://auto-ledger.local")
-      .addHeader("X-Title", "自动记账")
+      // OkHttp validates header values as ASCII only. Keep X-Title ASCII.
+      .addHeader("X-Title", "auto-ledger")
       .post(body)
       .build()
 

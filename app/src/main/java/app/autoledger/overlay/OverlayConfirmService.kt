@@ -166,7 +166,10 @@ class OverlayConfirmService : Service() {
         Handler(Looper.getMainLooper()).post {
           subtitle.text = "解析失败"
           toast("解析失败：${e.message}")
-          removeCard(); stopSelf()
+          // Keep the card briefly so users can see something happened even if toast is suppressed.
+          Handler(Looper.getMainLooper()).postDelayed({
+            removeCard(); stopSelf()
+          }, 2500)
         }
       }
     }.start()
