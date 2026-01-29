@@ -74,11 +74,19 @@ class HotkeyAccessibilityService : AccessibilityService() {
   override fun onAccessibilityEvent(event: AccessibilityEvent?) {
     // Keep a fresh cache of current-screen text so QS tile can work even if broadcasts
     // are missed or the service is restarted.
+    // Only cache non-SystemUI content (skip control center, launcher, our own app)
     try {
       val root = rootInActiveWindow
-      val extracted = UiTextExtractor.extract(root)
-      if (extracted.isNotBlank()) {
-        ScreenTextCache.put(this, extracted)
+      val pkg = root?.packageName?.toString().orEmpty()
+      val shouldSkip = pkg.contains("systemui", ignoreCase = true)
+                    || pkg.contains("launcher", ignoreCase = true)
+                    || pkg == packageName
+
+      if (!shouldSkip && pkg.isNotBlank()) {
+        val extracted = UiTextExtractor.extract(root)
+        if (extracted.isNotBlank()) {
+          ScreenTextCache.put(this, extracted)
+        }
       }
     } catch (_: Exception) {}
   }
