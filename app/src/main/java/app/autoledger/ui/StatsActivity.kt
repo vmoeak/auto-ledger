@@ -158,7 +158,7 @@ class StatsActivity : AppCompatActivity() {
         text = String.format("%.2f", total)
         gravity = Gravity.END
         setTypeface(null, Typeface.BOLD)
-        setTextColor(if (total < 0) 0xFFD32F2F.toInt() else 0xFF388E3C.toInt())
+        setTextColor(if (total < 0) resources.getColor(R.color.notion_danger, theme) else resources.getColor(R.color.notion_success, theme))
       }
 
       row.addView(nameView)

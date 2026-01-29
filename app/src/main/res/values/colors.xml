@@ -1,10 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-  <color name="purple_200">#BB86FC</color>
-  <color name="purple_500">#6200EE</color>
-  <color name="purple_700">#3700B3</color>
-  <color name="teal_200">#03DAC5</color>
-  <color name="teal_700">#018786</color>
-  <color name="black">#000000</color>
-  <color name="white">#FFFFFF</color>
+  <!-- Notion-ish neutral palette (light) -->
+  <color name="notion_bg">#FFF7F7F5</color>
+  <color name="notion_surface">#FFFFFFFF</color>
+  <color name="notion_text">#FF111111</color>
+  <color name="notion_muted">#FF6B6B6B</color>
+  <color name="notion_border">#FFE6E6E3</color>
+  <color name="notion_accent">#FF111111</color>
+  <color name="notion_success">#FF1F7A3F</color>
+  <color name="notion_danger">#FFB42318</color>
+
+  <!-- Keep legacy names (avoid breaking references) -->
+  <color name="purple_200">#FF4C4C4C</color>
+  <color name="purple_500">@color/notion_accent</color>
+  <color name="purple_700">#FF000000</color>
+  <color name="teal_200">#FF9E9E9E</color>
+  <color name="teal_700">#FF6B6B6B</color>
+  <color name="black">#FF000000</color>
+  <color name="white">#FFFFFFFF</color>
 </resources>

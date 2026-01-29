@@ -4,7 +4,7 @@
   android:layout_height="wrap_content"
   android:orientation="vertical"
   android:padding="12dp"
-  android:background="#EEFFFFFF">
+  android:background="@drawable/overlay_card_bg">
 
   <TextView
     android:id="@+id/title"

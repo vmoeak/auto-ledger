@@ -1,9 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+  <!-- Notion-ish: quiet, flat, lots of whitespace, subtle borders -->
   <style name="Theme.AutoLedger" parent="Theme.MaterialComponents.DayNight.NoActionBar">
-    <item name="colorPrimary">@color/purple_500</item>
-    <item name="colorPrimaryVariant">@color/purple_700</item>
+    <item name="colorPrimary">@color/notion_accent</item>
+    <item name="colorPrimaryVariant">@color/notion_text</item>
     <item name="colorOnPrimary">@color/white</item>
+
+    <item name="colorSecondary">@color/notion_text</item>
+    <item name="colorOnSecondary">@color/white</item>
+
+    <item name="colorSurface">@color/notion_surface</item>
+    <item name="colorOnSurface">@color/notion_text</item>
+    <item name="android:colorBackground">@color/notion_bg</item>
+
+    <item name="android:textColorPrimary">@color/notion_text</item>
+    <item name="android:textColorSecondary">@color/notion_muted</item>
+
+    <!-- Make outlined controls look cleaner -->
+    <item name="materialButtonOutlinedStyle">@style/Widget.AutoLedger.Button.Outlined</item>
+    <item name="materialCardViewStyle">@style/Widget.AutoLedger.Card</item>
   </style>
 
   <style name="Theme.AutoLedger.Transparent" parent="Theme.MaterialComponents.DayNight.NoActionBar">
@@ -12,5 +27,21 @@
     <item name="android:windowContentOverlay">@null</item>
     <item name="android:windowNoTitle">true</item>
     <item name="android:backgroundDimEnabled">false</item>
+  </style>
+
+  <style name="Widget.AutoLedger.Card" parent="Widget.MaterialComponents.CardView">
+    <item name="cardCornerRadius">14dp</item>
+    <item name="cardUseCompatPadding">true</item>
+    <item name="cardElevation">0dp</item>
+    <item name="strokeWidth">1dp</item>
+    <item name="strokeColor">@color/notion_border</item>
+    <item name="cardBackgroundColor">@color/notion_surface</item>
+  </style>
+
+  <style name="Widget.AutoLedger.Button.Outlined" parent="Widget.MaterialComponents.Button.OutlinedButton">
+    <item name="cornerRadius">12dp</item>
+    <item name="strokeColor">@color/notion_border</item>
+    <item name="strokeWidth">1dp</item>
+    <item name="android:textColor">@color/notion_text</item>
   </style>
 </resources>
