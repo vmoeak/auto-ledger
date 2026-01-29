@@ -22,6 +22,12 @@ class HotkeyAccessibilityService : AccessibilityService() {
 
   private val handler = Handler(Looper.getMainLooper())
 
+  companion object {
+    @Volatile
+    var isRunning: Boolean = false
+      private set
+  }
+
   private var volumeUpDownAt: Long = 0L
   private var longPressTriggered: Boolean = false
   private var lastTriggerAt: Long = 0L
@@ -53,6 +59,7 @@ class HotkeyAccessibilityService : AccessibilityService() {
 
   override fun onServiceConnected() {
     super.onServiceConnected()
+    isRunning = true
     Log.i(TAG, "service connected")
     try {
       registerReceiver(
@@ -67,6 +74,7 @@ class HotkeyAccessibilityService : AccessibilityService() {
   }
 
   override fun onDestroy() {
+    isRunning = false
     try { unregisterReceiver(triggerReceiver) } catch (_: Exception) {}
     super.onDestroy()
   }
@@ -74,8 +82,15 @@ class HotkeyAccessibilityService : AccessibilityService() {
   override fun onAccessibilityEvent(event: AccessibilityEvent?) {
     // Keep a fresh cache of current-screen text so QS tile can work even if broadcasts
     // are missed or the service is restarted.
+    // Skip caching SystemUI/launcher content to avoid polluting cache when QS panel is open.
     try {
       val root = rootInActiveWindow
+      val pkg = root?.packageName?.toString().orEmpty()
+      val shouldSkip = pkg.contains("systemui", ignoreCase = true)
+                    || pkg.contains("launcher", ignoreCase = true)
+                    || pkg == packageName
+      if (shouldSkip) return
+
       val extracted = UiTextExtractor.extract(root)
       if (extracted.isNotBlank()) {
         ScreenTextCache.put(this, extracted)
