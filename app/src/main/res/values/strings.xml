@@ -29,5 +29,6 @@
   <string name="total_income">收入</string>
   <string name="transaction_count">笔数</string>
   <string name="by_merchant">按商户</string>
+  <string name="detail_title">明细</string>
   <string name="no_transactions">本周期暂无交易</string>
 </resources>

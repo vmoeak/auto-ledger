@@ -122,7 +122,6 @@ class StatsActivity : AppCompatActivity() {
   private fun displayStats(entries: List<LedgerEntry>) {
     var totalExpense = 0.0
     var totalIncome = 0.0
-    val merchantTotals = mutableMapOf<String, Double>()
 
     for (entry in entries) {
       if (entry.amount < 0) {
@@ -130,44 +129,16 @@ class StatsActivity : AppCompatActivity() {
       } else {
         totalIncome += entry.amount
       }
-
-      val merchant = entry.merchant.ifBlank { "Unknown" }
-      merchantTotals[merchant] = (merchantTotals[merchant] ?: 0.0) + entry.amount
     }
 
     tvTotalExpense.text = String.format("%.2f", totalExpense)
     tvTotalIncome.text = String.format("+%.2f", totalIncome)
     tvCount.text = entries.size.toString()
 
-    // Display merchant breakdown
+    // 明细：按月/按年时，在列表里展示到“年月日时分”
     merchantList.removeAllViews()
-    val sortedMerchants = merchantTotals.entries.sortedBy { it.value }
 
-    for ((merchant, total) in sortedMerchants) {
-      val row = LinearLayout(this).apply {
-        orientation = LinearLayout.HORIZONTAL
-        setPadding(0, 8, 0, 8)
-      }
-
-      val nameView = TextView(this).apply {
-        text = merchant
-        layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-      }
-
-      val amountView = TextView(this).apply {
-        text = String.format("%.2f", total)
-        gravity = Gravity.END
-        setTypeface(null, Typeface.BOLD)
-        // 票据/账本风：支出像“红印章”，收入用墨绿
-        setTextColor(if (total < 0) resources.getColor(R.color.stamp_red, theme) else resources.getColor(R.color.ink_green, theme))
-      }
-
-      row.addView(nameView)
-      row.addView(amountView)
-      merchantList.addView(row)
-    }
-
-    if (merchantTotals.isEmpty()) {
+    if (entries.isEmpty()) {
       val emptyView = TextView(this).apply {
         text = getString(R.string.no_transactions)
         setPadding(0, 16, 0, 16)
@@ -175,6 +146,49 @@ class StatsActivity : AppCompatActivity() {
         setTextColor(0xFF666666.toInt())
       }
       merchantList.addView(emptyView)
+      return
+    }
+
+    val sorted = entries.sortedByDescending { it.time }
+
+    for (entry in sorted) {
+      val row = LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL
+        setPadding(0, 10, 0, 10)
+      }
+
+      val left = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+      }
+
+      val timeView = TextView(this).apply {
+        // Month/Year view: show full `yyyy-MM-dd HH:mm`
+        // Day view: also safe to show full time (user asked month/year explicitly)
+        text = entry.time
+        setTextColor(resources.getColor(R.color.paper_muted, theme))
+        textSize = 12f
+      }
+
+      val merchantView = TextView(this).apply {
+        text = entry.merchant.ifBlank { "未知商户" }
+        setTypeface(null, Typeface.BOLD)
+        textSize = 14f
+      }
+
+      left.addView(timeView)
+      left.addView(merchantView)
+
+      val amountView = TextView(this).apply {
+        text = String.format("%.2f", entry.amount)
+        gravity = Gravity.END
+        setTypeface(null, Typeface.BOLD)
+        setTextColor(if (entry.amount < 0) resources.getColor(R.color.stamp_red, theme) else resources.getColor(R.color.ink_green, theme))
+      }
+
+      row.addView(left)
+      row.addView(amountView)
+      merchantList.addView(row)
     }
   }
 }
