@@ -25,7 +25,7 @@ class HotkeyAccessibilityService : AccessibilityService() {
   companion object {
     @Volatile
     var isRunning: Boolean = false
-      private set
+      internal set
   }
 
   private var volumeUpDownAt: Long = 0L
