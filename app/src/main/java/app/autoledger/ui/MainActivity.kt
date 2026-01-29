@@ -22,12 +22,29 @@ class MainActivity : AppCompatActivity() {
   private lateinit var b: ActivityMainBinding
   private lateinit var cfg: AppConfig
 
-  private val pickLedger = registerForActivityResult(ActivityResultContracts.CreateDocument("text/csv")) { uri: Uri? ->
-    if (uri != null) {
-      contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
-      cfg.ledgerUri = uri
-      toast("Ledger set")
-      updateStatus()
+  /**
+   * Pick an existing ledger.csv.
+   *
+   * NOTE: CreateDocument can only create a new file, it cannot select an existing one.
+   * We use ACTION_OPEN_DOCUMENT so users can pick an existing ledger.csv.
+   */
+  private val pickLedger = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { res ->
+    if (res.resultCode == Activity.RESULT_OK) {
+      val uri: Uri? = res.data?.data
+      if (uri != null) {
+        // Persist permissions so the app can read/write the file later.
+        val flags = (res.data?.flags ?: 0) and
+          (Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+        try {
+          contentResolver.takePersistableUriPermission(uri, flags)
+        } catch (e: Exception) {
+          // Some providers may not grant write permission; still store uri.
+          Log.w(TAG, "takePersistableUriPermission failed", e)
+        }
+        cfg.ledgerUri = uri
+        toast("已选择账本文件")
+        updateStatus()
+      }
     }
   }
 
@@ -63,7 +80,15 @@ class MainActivity : AppCompatActivity() {
     }
 
     b.pickLedger.setOnClickListener {
-      pickLedger.launch("ledger.csv")
+      val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+        addCategory(Intent.CATEGORY_OPENABLE)
+        type = "text/*"
+        putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("text/csv", "text/plain", "application/vnd.ms-excel"))
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+        addFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
+      }
+      pickLedger.launch(intent)
     }
 
     b.requestCapturePerm.setOnClickListener {
