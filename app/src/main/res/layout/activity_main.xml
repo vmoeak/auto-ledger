@@ -142,39 +142,16 @@
         <TextView
           android:layout_width="match_parent"
           android:layout_height="wrap_content"
-          android:text="@string/section_capture"
+          android:text="统计"
           android:textStyle="bold"
           android:textSize="16sp" />
-
-        <com.google.android.material.button.MaterialButton
-          android:id="@+id/requestCapturePerm"
-          style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-          android:layout_width="match_parent"
-          android:layout_height="wrap_content"
-          android:layout_marginTop="12dp"
-          android:text="@string/btn_authorize_capture" />
-
-        <com.google.android.material.button.MaterialButton
-          android:id="@+id/toggleOverlay"
-          style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-          android:layout_width="match_parent"
-          android:layout_height="wrap_content"
-          android:layout_marginTop="8dp"
-          android:text="@string/btn_toggle_floating" />
-
-        <com.google.android.material.button.MaterialButton
-          android:id="@+id/testCapture"
-          android:layout_width="match_parent"
-          android:layout_height="wrap_content"
-          android:layout_marginTop="12dp"
-          android:text="@string/btn_test_capture" />
 
         <com.google.android.material.button.MaterialButton
           android:id="@+id/viewStats"
           style="@style/Widget.MaterialComponents.Button.OutlinedButton"
           android:layout_width="match_parent"
           android:layout_height="wrap_content"
-          android:layout_marginTop="8dp"
+          android:layout_marginTop="12dp"
           android:text="@string/btn_view_stats" />
 
       </LinearLayout>

@@ -2,18 +2,14 @@ package app.autoledger.ui
 
 import android.app.Activity
 import android.content.Intent
-import android.media.projection.MediaProjectionManager
 import android.net.Uri
 import android.os.Bundle
-import android.provider.Settings
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import app.autoledger.core.AppConfig
-import app.autoledger.core.CapturePermissionStore
 import app.autoledger.databinding.ActivityMainBinding
-import app.autoledger.overlay.OverlayService
 
 class MainActivity : AppCompatActivity() {
 
@@ -48,16 +44,7 @@ class MainActivity : AppCompatActivity() {
     }
   }
 
-  private val requestCapture = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { res ->
-    if (res.resultCode == Activity.RESULT_OK && res.data != null) {
-      CapturePermissionStore.resultCode = res.resultCode
-      CapturePermissionStore.resultData = res.data
-      toast("Capture authorized (in-memory)")
-      updateStatus()
-    } else {
-      toast("Capture authorization canceled")
-    }
-  }
+  // 截图/悬浮入口已从主界面移除（仍可通过快捷设置磁贴等方式使用）。
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
@@ -75,7 +62,7 @@ class MainActivity : AppCompatActivity() {
       cfg.apiKey = b.apiKey.text?.toString() ?: ""
       cfg.model = b.model.text?.toString() ?: ""
       Log.i(TAG, "Saved config baseUrl=${cfg.baseUrl} model=${cfg.model} apiKeySet=${cfg.apiKey.isNotBlank()}")
-      toast("Saved")
+      toast("已保存")
       updateStatus()
     }
 
@@ -91,29 +78,7 @@ class MainActivity : AppCompatActivity() {
       pickLedger.launch(intent)
     }
 
-    b.requestCapturePerm.setOnClickListener {
-      val mgr = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
-      requestCapture.launch(mgr.createScreenCaptureIntent())
-    }
-
-    b.toggleOverlay.setOnClickListener {
-      if (!Settings.canDrawOverlays(this)) {
-        val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION)
-        intent.data = Uri.parse("package:$packageName")
-        startActivity(intent)
-        toast("Grant overlay permission then tap again")
-        return@setOnClickListener
-      }
-      val running = OverlayService.isRunning
-      val i = Intent(this, OverlayService::class.java)
-      if (running) stopService(i) else startService(i)
-      updateStatus()
-    }
-
-    b.testCapture.setOnClickListener {
-      Log.i(TAG, "Test Capture clicked")
-      startActivity(Intent(this, CaptureActivity::class.java))
-    }
+    // 主界面已移除截图/悬浮按钮相关入口。
 
     b.viewStats.setOnClickListener {
       Log.i(TAG, "View Stats clicked")
@@ -125,15 +90,12 @@ class MainActivity : AppCompatActivity() {
 
   private fun updateStatus() {
     val ledgerOk = cfg.ledgerUri != null
-    val captureOk = CapturePermissionStore.resultData != null
     val keyOk = cfg.apiKey.isNotBlank()
-    b.status.text = "Status:\n" +
-      "- baseUrl: ${cfg.baseUrl}\n" +
-      "- model: ${cfg.model}\n" +
-      "- apiKey: ${if (keyOk) "set" else "missing"}\n" +
-      "- ledger.csv: ${if (ledgerOk) "set" else "missing"}\n" +
-      "- capture permission: ${if (captureOk) "authorized" else "missing"}\n" +
-      "- overlay running: ${OverlayService.isRunning}"
+    b.status.text = "状态：\n" +
+      "- Base URL：${cfg.baseUrl}\n" +
+      "- 模型：${cfg.model}\n" +
+      "- API Key：${if (keyOk) "已设置" else "未设置"}\n" +
+      "- 账本文件：${if (ledgerOk) "已选择" else "未选择"}\n"
   }
 
   private fun toast(s: String) = Toast.makeText(this, s, Toast.LENGTH_SHORT).show()

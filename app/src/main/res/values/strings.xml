@@ -15,10 +15,6 @@
   <string name="section_ledger">账本文件</string>
   <string name="btn_choose_ledger">选择 ledger.csv（文件位置）</string>
 
-  <string name="section_capture">截图/悬浮按钮</string>
-  <string name="btn_authorize_capture">授权屏幕录制（用于截图）</string>
-  <string name="btn_toggle_floating">切换悬浮按钮</string>
-  <string name="btn_test_capture">立即测试截图</string>
   <string name="btn_view_stats">查看统计</string>
 
   <string name="label_status">状态</string>
