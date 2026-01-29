@@ -158,7 +158,8 @@ class StatsActivity : AppCompatActivity() {
         text = String.format("%.2f", total)
         gravity = Gravity.END
         setTypeface(null, Typeface.BOLD)
-        setTextColor(if (total < 0) resources.getColor(R.color.notion_danger, theme) else resources.getColor(R.color.notion_success, theme))
+        // 票据/账本风：支出像“红印章”，收入用墨绿
+        setTextColor(if (total < 0) resources.getColor(R.color.stamp_red, theme) else resources.getColor(R.color.ink_green, theme))
       }
 
       row.addView(nameView)

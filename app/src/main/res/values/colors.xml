@@ -1,21 +1,30 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-  <!-- Notion-ish neutral palette (light) -->
-  <color name="notion_bg">#FFF7F7F5</color>
-  <color name="notion_surface">#FFFFFFFF</color>
-  <color name="notion_text">#FF111111</color>
-  <color name="notion_muted">#FF6B6B6B</color>
-  <color name="notion_border">#FFE6E6E3</color>
-  <color name="notion_accent">#FF111111</color>
-  <color name="notion_success">#FF1F7A3F</color>
-  <color name="notion_danger">#FFB42318</color>
+  <!-- A) 票据/账本风：暖纸张底 + 红色印章点缀 -->
+  <color name="paper_bg">#FFF7F1E6</color>
+  <color name="paper_surface">#FFFFFFFF</color>
+  <color name="paper_text">#FF1A1A1A</color>
+  <color name="paper_muted">#FF6F6A63</color>
+  <color name="paper_border">#FFE7DCCB</color>
+  <color name="stamp_red">#FFC43D3D</color>
+  <color name="ink_green">#FF1F7A3F</color>
+
+  <!-- Back-compat names used elsewhere -->
+  <color name="notion_bg">@color/paper_bg</color>
+  <color name="notion_surface">@color/paper_surface</color>
+  <color name="notion_text">@color/paper_text</color>
+  <color name="notion_muted">@color/paper_muted</color>
+  <color name="notion_border">@color/paper_border</color>
+  <color name="notion_accent">@color/paper_text</color>
+  <color name="notion_success">@color/ink_green</color>
+  <color name="notion_danger">@color/stamp_red</color>
 
   <!-- Keep legacy names (avoid breaking references) -->
   <color name="purple_200">#FF4C4C4C</color>
-  <color name="purple_500">@color/notion_accent</color>
+  <color name="purple_500">@color/paper_text</color>
   <color name="purple_700">#FF000000</color>
   <color name="teal_200">#FF9E9E9E</color>
-  <color name="teal_700">#FF6B6B6B</color>
+  <color name="teal_700">@color/paper_muted</color>
   <color name="black">#FF000000</color>
   <color name="white">#FFFFFFFF</color>
 </resources>
