@@ -41,7 +41,7 @@ class OverlayConfirmService : Service() {
     Log.i(TAG, "onStartCommand src=$triggerSource extractedLen=${extractedText.length}")
 
     if (extractedText.isBlank()) {
-      Toast.makeText(this, "No readable text (Accessibility)", Toast.LENGTH_SHORT).show()
+      Toast.makeText(this, "当前页面未识别到可读文字（需要无障碍辅助读取）", Toast.LENGTH_SHORT).show()
       stopSelf()
       return START_NOT_STICKY
     }
@@ -77,18 +77,32 @@ class OverlayConfirmService : Service() {
     v.findViewById<Button>(R.id.saveBtn).isEnabled = false
 
     rootView = v
-    wm.addView(v, params)
+    try {
+      wm.addView(v, params)
+    } catch (e: Exception) {
+      Log.e(TAG, "wm.addView failed (overlay permission?)", e)
+      Toast.makeText(this, "无法弹出悬浮窗：请在系统设置中开启“在其他应用上层显示/悬浮窗”权限", Toast.LENGTH_LONG).show()
+      // Best effort: jump to overlay permission settings.
+      try {
+        val i = Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION).apply {
+          data = android.net.Uri.parse("package:$packageName")
+          addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        startActivity(i)
+      } catch (_: Exception) {}
+      stopSelf()
+    }
   }
 
   private fun parseAndBind(extractedText: String) {
     val cfg = AppConfig(this)
     if (cfg.apiKey.isBlank()) {
-      toast("API key missing")
+      toast("API Key 未设置")
       removeCard(); stopSelf(); return
     }
     val ledgerUri = cfg.ledgerUri
     if (ledgerUri == null) {
-      toast("ledger.csv missing")
+      toast("未选择账本文件（ledger.csv）")
       removeCard(); stopSelf(); return
     }
 
@@ -114,14 +128,14 @@ class OverlayConfirmService : Service() {
 
         Handler(Looper.getMainLooper()).post {
           val now = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
-          subtitle.text = "Review & save"
+          subtitle.text = "确认并保存"
           timeEt.setText(app.autoledger.core.LedgerWriter.normalizeTime(parsed.time_local ?: now))
           appEt.setText(parsed.app ?: "Unknown")
           amountEt.setText(app.autoledger.core.LedgerWriter.formatAmount(parsed.amount))
           currencyEt.setText(parsed.currency ?: "CNY")
           merchantEt.setText(parsed.merchant ?: "")
           noteEt.setText(parsed.note ?: "")
-          confTv.text = "confidence: ${parsed.confidence ?: ""}"
+          confTv.text = "置信度：${parsed.confidence ?: ""}"
           saveBtn.isEnabled = true
 
           saveBtn.setOnClickListener {
@@ -139,10 +153,10 @@ class OverlayConfirmService : Service() {
                 LedgerWriter.csvEscape(LedgerWriter.compactRaw(parsed.raw))
               ).joinToString(",")
               LedgerWriter.appendRow(this, ledgerUri, row)
-              toast("Saved")
+              toast("已保存")
             } catch (e: Exception) {
               Log.e(TAG, "save failed", e)
-              toast("Save failed: ${e.message}")
+              toast("保存失败：${e.message}")
             }
             removeCard(); stopSelf()
           }
@@ -150,8 +164,8 @@ class OverlayConfirmService : Service() {
       } catch (e: Exception) {
         Log.e(TAG, "parse failed", e)
         Handler(Looper.getMainLooper()).post {
-          subtitle.text = "Parse failed"
-          toast("Parse failed: ${e.message}")
+          subtitle.text = "解析失败"
+          toast("解析失败：${e.message}")
           removeCard(); stopSelf()
         }
       }
