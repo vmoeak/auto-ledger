@@ -16,6 +16,11 @@
     <item name="android:textColorPrimary">@color/notion_text</item>
     <item name="android:textColorSecondary">@color/notion_muted</item>
 
+    <!-- Remove top blue status-bar strip: make system bars match background -->
+    <item name="android:statusBarColor">@color/notion_bg</item>
+    <item name="android:navigationBarColor">@color/notion_bg</item>
+    <item name="android:windowLightStatusBar">true</item>
+
     <!-- Make outlined controls look cleaner -->
     <item name="materialButtonOutlinedStyle">@style/Widget.AutoLedger.Button.Outlined</item>
     <item name="materialCardViewStyle">@style/Widget.AutoLedger.Card</item>
