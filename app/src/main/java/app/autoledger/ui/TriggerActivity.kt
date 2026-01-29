@@ -24,7 +24,7 @@ class TriggerActivity : Activity() {
 
     if (accessibilityRunning) {
       // Preferred path: notify AccessibilityService (it can extract fresh screen text).
-      // Don't use cache path when service is running to avoid duplicate triggers.
+      // Avoid cache fallback here to prevent duplicate triggers.
       try {
         sendBroadcast(
           Intent(Actions.ACTION_TRIGGER_LEDGER)
@@ -36,7 +36,7 @@ class TriggerActivity : Activity() {
         Log.e(TAG, "broadcast failed", e)
       }
     } else {
-      // Fallback path: AccessibilityService isn't running, use cached screen text.
+      // Fallback path: AccessibilityService isn't running; use cached screen text.
       Log.w(TAG, "AccessibilityService not running, using cache fallback")
       try {
         val (cached, ts) = ScreenTextCache.get(this)
@@ -50,7 +50,11 @@ class TriggerActivity : Activity() {
           startService(i)
         } else {
           Log.w(TAG, "cache empty/stale ageMs=$ageMs len=${cached.length}")
-          Toast.makeText(this, "未获取到页面文本：请确保已开启无障碍，并打开目标页面后再点"记一笔"", Toast.LENGTH_SHORT).show()
+          Toast.makeText(
+            this,
+            "未获取到页面文本：请确保已开启无障碍，并打开目标页面后再点「记一笔」",
+            Toast.LENGTH_SHORT
+          ).show()
         }
       } catch (e: Exception) {
         Log.e(TAG, "fallback start service failed", e)
