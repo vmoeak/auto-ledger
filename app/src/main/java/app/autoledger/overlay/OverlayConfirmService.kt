@@ -14,12 +14,14 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
+import android.graphics.Bitmap
 import android.provider.Settings
 import app.autoledger.R
 import app.autoledger.core.Actions
 import app.autoledger.core.AppConfig
 import app.autoledger.core.LedgerWriter
 import app.autoledger.core.OpenAiCompatClient
+import app.autoledger.core.ScreenshotStore
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -37,9 +39,26 @@ class OverlayConfirmService : Service() {
   }
 
   override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-    val extractedText = intent?.getStringExtra(Actions.EXTRA_EXTRACTED_TEXT).orEmpty()
     val triggerSource = intent?.getStringExtra(Actions.EXTRA_TRIGGER_SOURCE) ?: "(unknown)"
-    Log.i(TAG, "onStartCommand src=$triggerSource extractedLen=${extractedText.length}")
+    val screenshotMode = intent?.getBooleanExtra(Actions.EXTRA_SCREENSHOT_MODE, false) == true
+    Log.i(TAG, "onStartCommand src=$triggerSource screenshotMode=$screenshotMode")
+
+    if (screenshotMode) {
+      val bmp = ScreenshotStore.take()
+      if (bmp == null) {
+        Log.e(TAG, "screenshotMode but ScreenshotStore is empty")
+        Toast.makeText(this, "\u622a\u56fe\u6570\u636e\u4e22\u5931", Toast.LENGTH_SHORT).show()
+        stopSelf()
+        return START_NOT_STICKY
+      }
+      Log.i(TAG, "screenshot bitmap ${bmp.width}x${bmp.height}")
+      showOrReplaceCard()
+      parseAndBindScreenshot(bmp)
+      return START_NOT_STICKY
+    }
+
+    val extractedText = intent?.getStringExtra(Actions.EXTRA_EXTRACTED_TEXT).orEmpty()
+    Log.i(TAG, "text mode extractedLen=${extractedText.length}")
 
     if (extractedText.isBlank()) {
       Log.w(TAG, "extractedText is blank, showing toast and stopping")
@@ -188,6 +207,90 @@ class OverlayConfirmService : Service() {
           subtitle.text = "\u89e3\u6790\u5931\u8d25"
           toast("\u89e3\u6790\u5931\u8d25\uff1a${e.message}")
           // Keep the card briefly so users can see something happened even if toast is suppressed.
+          Handler(Looper.getMainLooper()).postDelayed({
+            removeCard(); stopSelf()
+          }, 2500)
+        }
+      }
+    }.start()
+  }
+
+  private fun parseAndBindScreenshot(bmp: Bitmap) {
+    val cfg = AppConfig(this)
+    if (cfg.apiKey.isBlank()) {
+      toast("API Key \u672a\u8bbe\u7f6e")
+      removeCard(); stopSelf(); return
+    }
+    val ledgerUri = cfg.ledgerUri
+    if (ledgerUri == null) {
+      toast("\u672a\u9009\u62e9\u8d26\u672c\u6587\u4ef6\uff08ledger.csv\uff09")
+      removeCard(); stopSelf(); return
+    }
+
+    val v = rootView ?: return
+    val subtitle = v.findViewById<TextView>(R.id.subtitle)
+    val saveBtn = v.findViewById<Button>(R.id.saveBtn)
+
+    val timeEt = v.findViewById<EditText>(R.id.timeLocal)
+    val appEt = v.findViewById<EditText>(R.id.app)
+    val amountEt = v.findViewById<EditText>(R.id.amount)
+    val currencyEt = v.findViewById<EditText>(R.id.currency)
+    val merchantEt = v.findViewById<EditText>(R.id.merchant)
+    val noteEt = v.findViewById<EditText>(R.id.note)
+    val confTv = v.findViewById<TextView>(R.id.confidence)
+
+    val client = OpenAiCompatClient(cfg.baseUrl, cfg.apiKey, cfg.model)
+
+    subtitle.text = "\u622a\u56fe\u8bc6\u522b\u4e2d\u2026"
+
+    Thread {
+      try {
+        Log.i(TAG, "calling model (screenshot mode)")
+        val parsed = client.parseExpenseFromScreenshot(bmp)
+        bmp.recycle()
+        Log.i(TAG, "parse ok (screenshot) conf=${parsed.confidence}")
+
+        Handler(Looper.getMainLooper()).post {
+          val now = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
+          subtitle.text = "\u786e\u8ba4\u5e76\u4fdd\u5b58"
+          timeEt.setText(LedgerWriter.normalizeTime(parsed.time_local ?: now))
+          appEt.setText(parsed.app ?: "Unknown")
+          amountEt.setText(LedgerWriter.formatAmount(parsed.amount))
+          currencyEt.setText(parsed.currency ?: "CNY")
+          merchantEt.setText(parsed.merchant ?: "")
+          noteEt.setText(parsed.note ?: "")
+          confTv.text = "\u7f6e\u4fe1\u5ea6\uff1a${parsed.confidence ?: ""}"
+          saveBtn.isEnabled = true
+
+          saveBtn.setOnClickListener {
+            try {
+              LedgerWriter.ensureHeader(this, ledgerUri)
+              val row = listOf(
+                LedgerWriter.normalizeTime(timeEt.text?.toString() ?: now),
+                (appEt.text?.toString() ?: "Unknown"),
+                (amountEt.text?.toString() ?: ""),
+                (currencyEt.text?.toString() ?: "CNY"),
+                (merchantEt.text?.toString() ?: ""),
+                "", // category
+                (noteEt.text?.toString() ?: ""),
+                (parsed.confidence?.toString() ?: ""),
+                LedgerWriter.csvEscape(LedgerWriter.compactRaw(parsed.raw))
+              ).joinToString(",")
+              LedgerWriter.appendRow(this, ledgerUri, row)
+              toast("\u5df2\u4fdd\u5b58")
+            } catch (e: Exception) {
+              Log.e(TAG, "save failed", e)
+              toast("\u4fdd\u5b58\u5931\u8d25\uff1a${e.message}")
+            }
+            removeCard(); stopSelf()
+          }
+        }
+      } catch (e: Exception) {
+        Log.e(TAG, "parse failed (screenshot)", e)
+        bmp.recycle()
+        Handler(Looper.getMainLooper()).post {
+          subtitle.text = "\u89e3\u6790\u5931\u8d25"
+          toast("\u89e3\u6790\u5931\u8d25\uff1a${e.message}")
           Handler(Looper.getMainLooper()).postDelayed({
             removeCard(); stopSelf()
           }, 2500)

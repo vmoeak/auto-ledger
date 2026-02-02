@@ -1,14 +1,18 @@
 package app.autoledger.accessibility
 
 import android.content.Intent
+import android.graphics.Bitmap
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import android.view.Display
 import android.view.KeyEvent
 import android.view.accessibility.AccessibilityEvent
 import android.accessibilityservice.AccessibilityService
 import android.widget.Toast
 import app.autoledger.core.Actions
+import app.autoledger.core.ScreenshotStore
 import app.autoledger.overlay.OverlayConfirmService
 
 /**
@@ -207,8 +211,8 @@ class HotkeyAccessibilityService : AccessibilityService() {
     Log.i(TAG, "extractedText BEGIN\n$extracted\nextractedText END")
 
     if (extracted.isBlank()) {
-      Log.w(TAG, "extracted text is blank for pkg=$rootPkg, NOT starting overlay service")
-      Toast.makeText(this, "No readable text on current screen (Accessibility)", Toast.LENGTH_SHORT).show()
+      Log.w(TAG, "extracted text is blank for pkg=$rootPkg, falling back to screenshot")
+      takeScreenshotFallback(reason)
       return
     }
 
@@ -221,5 +225,65 @@ class HotkeyAccessibilityService : AccessibilityService() {
     } catch (e: Exception) {
       Log.e(TAG, "startService(OverlayConfirmService) failed", e)
     }
+  }
+
+  private fun takeScreenshotFallback(reason: String) {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+      Log.w(TAG, "takeScreenshot requires API 30+, current=${Build.VERSION.SDK_INT}")
+      Toast.makeText(this, "当前页面无法读取文字，且系统版本过低不支持截图回退", Toast.LENGTH_SHORT).show()
+      return
+    }
+
+    Log.i(TAG, "taking screenshot as fallback (reason=$reason)")
+    takeScreenshot(
+      Display.DEFAULT_DISPLAY,
+      mainExecutor,
+      object : TakeScreenshotCallback {
+        override fun onSuccess(result: ScreenshotResult) {
+          Log.i(TAG, "screenshot success")
+          try {
+            val hwBuf = result.hardwareBuffer
+            val colorSpace = result.colorSpace
+            val hardwareBmp = Bitmap.wrapHardwareBuffer(hwBuf, colorSpace)
+            hwBuf.close()
+            if (hardwareBmp == null) {
+              Log.e(TAG, "wrapHardwareBuffer returned null")
+              handler.post {
+                Toast.makeText(this@HotkeyAccessibilityService, "截图失败", Toast.LENGTH_SHORT).show()
+              }
+              return
+            }
+            // Convert to software bitmap so JPEG compression works
+            val swBmp = hardwareBmp.copy(Bitmap.Config.ARGB_8888, false)
+            hardwareBmp.recycle()
+            if (swBmp == null) {
+              Log.e(TAG, "bitmap copy to software failed")
+              handler.post {
+                Toast.makeText(this@HotkeyAccessibilityService, "截图失败", Toast.LENGTH_SHORT).show()
+              }
+              return
+            }
+            Log.i(TAG, "screenshot bitmap ${swBmp.width}x${swBmp.height}, starting overlay in screenshot mode")
+            ScreenshotStore.put(swBmp)
+            val i = Intent(this@HotkeyAccessibilityService, OverlayConfirmService::class.java)
+            i.putExtra(Actions.EXTRA_TRIGGER_SOURCE, reason)
+            i.putExtra(Actions.EXTRA_SCREENSHOT_MODE, true)
+            startService(i)
+          } catch (e: Exception) {
+            Log.e(TAG, "screenshot post-processing failed", e)
+            handler.post {
+              Toast.makeText(this@HotkeyAccessibilityService, "截图处理失败：${e.message}", Toast.LENGTH_SHORT).show()
+            }
+          }
+        }
+
+        override fun onFailure(errorCode: Int) {
+          Log.e(TAG, "takeScreenshot failed errorCode=$errorCode")
+          handler.post {
+            Toast.makeText(this@HotkeyAccessibilityService, "截图失败 (错误码: $errorCode)", Toast.LENGTH_SHORT).show()
+          }
+        }
+      }
+    )
   }
 }
