@@ -15,7 +15,8 @@ object ShizukuCapture {
 
   fun isAvailable(): Boolean {
     return try {
-      Shizuku.pingBinder()
+      val binder = Shizuku.getBinder() ?: return false
+      binder.isBinderAlive || Shizuku.pingBinder()
     } catch (_: Throwable) {
       false
     }

@@ -20,6 +20,14 @@ class MainActivity : AppCompatActivity() {
   private lateinit var b: ActivityMainBinding
   private lateinit var cfg: AppConfig
   private val shizukuRequestCode = 1101
+  private val shizukuBinderListener = Shizuku.OnBinderReceivedListener {
+    Log.i(TAG, "Shizuku binder received")
+    updateStatus()
+  }
+  private val shizukuBinderDeadListener = Shizuku.OnBinderDeadListener {
+    Log.w(TAG, "Shizuku binder dead")
+    updateStatus()
+  }
   private val shizukuPermissionListener = Shizuku.OnRequestPermissionResultListener { requestCode, grantResult ->
     if (requestCode != shizukuRequestCode) return@OnRequestPermissionResultListener
     if (grantResult == android.content.pm.PackageManager.PERMISSION_GRANTED) {
@@ -69,6 +77,8 @@ class MainActivity : AppCompatActivity() {
     b.model.setText(cfg.model)
 
     Shizuku.addRequestPermissionResultListener(shizukuPermissionListener)
+    Shizuku.addBinderReceivedListenerSticky(shizukuBinderListener)
+    Shizuku.addBinderDeadListener(shizukuBinderDeadListener)
 
     b.saveConfig.setOnClickListener {
       cfg.baseUrl = b.baseUrl.text?.toString() ?: ""
@@ -96,12 +106,10 @@ class MainActivity : AppCompatActivity() {
 
     b.useShizuku.isChecked = cfg.useShizukuCapture
     b.useShizuku.setOnCheckedChangeListener { _, isChecked ->
-      if (isChecked && !ShizukuCapture.isAvailable()) {
-        toast("未检测到 Shizuku，请先启动 Shizuku")
-        b.useShizuku.isChecked = false
-        return@setOnCheckedChangeListener
-      }
       cfg.useShizukuCapture = isChecked
+      if (isChecked && !ShizukuCapture.isAvailable()) {
+        toast("Shizuku 服务未就绪，请打开 Shizuku 并确保已启动")
+      }
       if (isChecked && ShizukuCapture.isAvailable() && !ShizukuCapture.hasPermission()) {
         toast("需要在 Shizuku 中授权本应用")
       }
@@ -110,8 +118,11 @@ class MainActivity : AppCompatActivity() {
 
     b.requestShizuku.setOnClickListener {
       if (!ShizukuCapture.isAvailable()) {
-        toast("未检测到 Shizuku，请先启动 Shizuku")
-        return@setOnClickListener
+        val ok = try { Shizuku.pingBinder() } catch (_: Exception) { false }
+        if (!ok) {
+          toast("未检测到 Shizuku 服务，请打开 Shizuku 并确保已启动")
+          return@setOnClickListener
+        }
       }
       if (Shizuku.checkSelfPermission() == android.content.pm.PackageManager.PERMISSION_GRANTED) {
         toast("Shizuku 已授权")
@@ -134,6 +145,8 @@ class MainActivity : AppCompatActivity() {
   override fun onDestroy() {
     try {
       Shizuku.removeRequestPermissionResultListener(shizukuPermissionListener)
+      Shizuku.removeBinderReceivedListener(shizukuBinderListener)
+      Shizuku.removeBinderDeadListener(shizukuBinderDeadListener)
     } catch (_: Exception) {}
     super.onDestroy()
   }
