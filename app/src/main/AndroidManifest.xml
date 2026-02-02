@@ -33,6 +33,14 @@
       android:theme="@style/Theme.AutoLedger.Transparent" />
 
     <activity
+      android:name=".ui.ProjectionPermissionActivity"
+      android:exported="false"
+      android:noHistory="true"
+      android:excludeFromRecents="true"
+      android:taskAffinity=""
+      android:theme="@style/Theme.AutoLedger.Transparent" />
+
+    <activity
       android:name=".ui.StatsActivity"
       android:exported="false" />
 
