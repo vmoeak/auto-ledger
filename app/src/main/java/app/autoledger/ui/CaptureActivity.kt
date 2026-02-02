@@ -2,6 +2,7 @@ package app.autoledger.ui
 
 import android.app.AlertDialog
 import android.content.Context
+import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.PixelFormat
 import android.hardware.display.DisplayManager
@@ -33,6 +34,7 @@ class CaptureActivity : AppCompatActivity() {
   private val TAG = "AutoLedger/Capture"
 
   private lateinit var cfg: AppConfig
+  private var triggerSource: String = "(unknown)"
 
   override fun onDestroy() {
     Log.i(TAG, "onDestroy: stopping foreground service")
@@ -43,8 +45,8 @@ class CaptureActivity : AppCompatActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
     Log.i(TAG, "onCreate")
-    val src = intent?.getStringExtra(Actions.EXTRA_TRIGGER_SOURCE) ?: "(unknown)"
-    Log.i(TAG, "triggerSource=$src")
+    triggerSource = intent?.getStringExtra(Actions.EXTRA_TRIGGER_SOURCE) ?: "(unknown)"
+    Log.i(TAG, "triggerSource=$triggerSource")
     cfg = AppConfig(this)
     Log.i(TAG, "cfg baseUrl=${cfg.baseUrl} model=${cfg.model} apiKeySet=${cfg.apiKey.isNotBlank()} ledgerSet=${cfg.ledgerUri != null}")
 
@@ -99,12 +101,16 @@ class CaptureActivity : AppCompatActivity() {
   private fun captureOnce(resultCode: Int, resultData: android.content.Intent) {
     Log.i(TAG, "captureOnce: getMediaProjection")
     val mgr = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
-    val projection: MediaProjection = try {
+    val projection: MediaProjection? = try {
       mgr.getMediaProjection(resultCode, resultData)
     } catch (e: Exception) {
       Log.e(TAG, "getMediaProjection failed", e)
-      toast("Capture start failed: ${e.message}")
-      finish()
+      handleProjectionInvalid("截图授权失效，请重新授权")
+      return
+    }
+    if (projection == null) {
+      Log.w(TAG, "getMediaProjection returned null; re-requesting permission")
+      handleProjectionInvalid("截图授权失效，请重新授权")
       return
     }
 
@@ -198,6 +204,21 @@ class CaptureActivity : AppCompatActivity() {
     handler.postDelayed({
       // A second chance if no image delivered; ImageReader will call listener anyway.
     }, 500)
+  }
+
+  private fun handleProjectionInvalid(message: String) {
+    CapturePermissionStore.resultData = null
+    CapturePermissionStore.resultCode = null
+    toast(message)
+    try {
+      val i = Intent(this, ProjectionPermissionActivity::class.java)
+        .putExtra(Actions.EXTRA_TRIGGER_SOURCE, triggerSource)
+      startActivity(i)
+    } catch (e: Exception) {
+      Log.e(TAG, "start ProjectionPermissionActivity failed", e)
+    } finally {
+      finish()
+    }
   }
 
   private fun parseAndConfirm(bitmap: Bitmap) {
