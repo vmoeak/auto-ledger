@@ -43,12 +43,22 @@ class CaptureForegroundService : Service() {
       .setCategory(NotificationCompat.CATEGORY_SERVICE)
       .build()
 
-    // Important: on Android 10+ you should specify the foreground-service type at runtime.
-    // Android 14+/15+/16 may enforce this for MediaProjection.
-    if (Build.VERSION.SDK_INT >= 29) {
-      startForeground(NOTIF_ID, notif, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION)
-    } else {
-      startForeground(NOTIF_ID, notif)
+    try {
+      // Important: on Android 10+ you should specify the foreground-service type at runtime.
+      // Android 14+/15+/16 may enforce this for MediaProjection.
+      if (Build.VERSION.SDK_INT >= 29) {
+        startForeground(NOTIF_ID, notif, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION)
+      } else {
+        startForeground(NOTIF_ID, notif)
+      }
+      isRunning = true
+      lastStartError = null
+      Log.i(TAG, "startForeground ok")
+    } catch (e: Exception) {
+      isRunning = false
+      lastStartError = "${e.javaClass.simpleName}: ${e.message}"
+      Log.e(TAG, "startForeground failed", e)
+      stopSelf()
     }
   }
 
@@ -59,6 +69,7 @@ class CaptureForegroundService : Service() {
 
   override fun onDestroy() {
     Log.i(TAG, "onDestroy")
+    isRunning = false
     super.onDestroy()
   }
 
@@ -67,8 +78,11 @@ class CaptureForegroundService : Service() {
   companion object {
     private const val CHANNEL_ID = "auto_ledger_capture"
     private const val NOTIF_ID = 1001
+    @Volatile var isRunning: Boolean = false
+    @Volatile var lastStartError: String? = null
 
     fun start(ctx: Context) {
+      lastStartError = null
       val i = Intent(ctx, CaptureForegroundService::class.java)
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
         ctx.startForegroundService(i)
