@@ -22,7 +22,8 @@ class MainActivity : AppCompatActivity() {
   private lateinit var cfg: AppConfig
   private val shizukuRequestCode = 1101
   private val shizukuBinderListener = Shizuku.OnBinderReceivedListener {
-    Log.i(TAG, "Shizuku binder received")
+    val binder = Shizuku.getBinder()
+    Log.i(TAG, "Shizuku binder received alive=${binder?.isBinderAlive == true}")
     updateStatus()
   }
   private val shizukuBinderDeadListener = Shizuku.OnBinderDeadListener {
@@ -81,8 +82,11 @@ class MainActivity : AppCompatActivity() {
     Shizuku.addBinderReceivedListenerSticky(shizukuBinderListener)
     Shizuku.addBinderDeadListener(shizukuBinderDeadListener)
     try {
-      if (Shizuku.getBinder() == null) {
+      val binder = Shizuku.getBinder()
+      Log.i(TAG, "onCreate: Shizuku binder=${binder != null} alive=${binder?.isBinderAlive == true}")
+      if (binder == null) {
         ShizukuProvider.requestBinderForNonProviderProcess(this)
+        Log.i(TAG, "requested Shizuku binder (onCreate)")
       }
     } catch (e: Exception) {
       Log.w(TAG, "requestBinderForNonProviderProcess failed", e)
@@ -126,14 +130,18 @@ class MainActivity : AppCompatActivity() {
 
     b.requestShizuku.setOnClickListener {
       try {
-        if (Shizuku.getBinder() == null) {
+        val binder = Shizuku.getBinder()
+        Log.i(TAG, "requestShizuku: binder=${binder != null} alive=${binder?.isBinderAlive == true}")
+        if (binder == null) {
           ShizukuProvider.requestBinderForNonProviderProcess(this)
+          Log.i(TAG, "requested Shizuku binder (button)")
         }
       } catch (e: Exception) {
         Log.w(TAG, "requestBinderForNonProviderProcess failed", e)
       }
       if (!ShizukuCapture.isAvailable()) {
         val ok = try { Shizuku.pingBinder() } catch (_: Exception) { false }
+        Log.i(TAG, "requestShizuku: pingBinder=$ok")
         if (!ok) {
           toast("未检测到 Shizuku 服务，请打开 Shizuku 并确保已启动")
           return@setOnClickListener
