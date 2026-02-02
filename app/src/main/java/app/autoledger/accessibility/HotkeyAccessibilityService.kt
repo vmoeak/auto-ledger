@@ -1,5 +1,6 @@
 package app.autoledger.accessibility
 
+import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.os.Build
@@ -74,6 +75,14 @@ class HotkeyAccessibilityService : AccessibilityService() {
       Log.i(TAG, "broadcast receiver registered")
     } catch (e: Exception) {
       Log.e(TAG, "registerReceiver failed", e)
+    }
+
+    // If the process was killed while a takeScreenshot() callback was pending,
+    // the flag survives in SharedPreferences. Retry the screenshot now.
+    val pendingReason = consumePendingScreenshot()
+    if (pendingReason != null) {
+      Log.i(TAG, "service reconnected with pending screenshot (reason=$pendingReason), retrying in 500ms")
+      handler.postDelayed({ takeScreenshotFallback(pendingReason) }, 500)
     }
   }
 
@@ -227,6 +236,44 @@ class HotkeyAccessibilityService : AccessibilityService() {
     }
   }
 
+  // ---- Pending screenshot flag (survives process death via SharedPreferences) ----
+
+  private fun setPendingScreenshot(reason: String) {
+    getSharedPreferences("autoledger_internal", Context.MODE_PRIVATE)
+      .edit()
+      .putLong("pendingScreenshotTs", System.currentTimeMillis())
+      .putString("pendingScreenshotReason", reason)
+      .apply()
+    Log.d(TAG, "setPendingScreenshot reason=$reason")
+  }
+
+  private fun clearPendingScreenshot() {
+    getSharedPreferences("autoledger_internal", Context.MODE_PRIVATE)
+      .edit()
+      .remove("pendingScreenshotTs")
+      .remove("pendingScreenshotReason")
+      .apply()
+  }
+
+  /** Returns the reason if a pending screenshot request is still fresh (< 5s), else null. */
+  private fun consumePendingScreenshot(): String? {
+    val prefs = getSharedPreferences("autoledger_internal", Context.MODE_PRIVATE)
+    val ts = prefs.getLong("pendingScreenshotTs", 0)
+    val reason = prefs.getString("pendingScreenshotReason", null)
+    // Always clear immediately to prevent infinite retry loops if process keeps dying.
+    clearPendingScreenshot()
+    if (reason == null || ts == 0L) return null
+    val age = System.currentTimeMillis() - ts
+    if (age > 5000) {
+      Log.d(TAG, "consumePendingScreenshot: expired (age=${age}ms)")
+      return null
+    }
+    Log.i(TAG, "consumePendingScreenshot: reason=$reason age=${age}ms")
+    return reason
+  }
+
+  // ---- Screenshot fallback ----
+
   private fun takeScreenshotFallback(reason: String) {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
       Log.w(TAG, "takeScreenshot requires API 30+, current=${Build.VERSION.SDK_INT}")
@@ -234,12 +281,17 @@ class HotkeyAccessibilityService : AccessibilityService() {
       return
     }
 
+    // Save flag BEFORE calling takeScreenshot(). If the process is killed before
+    // the callback fires, onServiceConnected() will see this flag and retry.
+    setPendingScreenshot(reason)
+
     Log.i(TAG, "taking screenshot as fallback (reason=$reason)")
     takeScreenshot(
       Display.DEFAULT_DISPLAY,
       mainExecutor,
       object : TakeScreenshotCallback {
         override fun onSuccess(result: ScreenshotResult) {
+          clearPendingScreenshot()
           Log.i(TAG, "screenshot success")
           try {
             val hwBuf = result.hardwareBuffer
@@ -278,6 +330,7 @@ class HotkeyAccessibilityService : AccessibilityService() {
         }
 
         override fun onFailure(errorCode: Int) {
+          clearPendingScreenshot()
           Log.e(TAG, "takeScreenshot failed errorCode=$errorCode")
           handler.post {
             Toast.makeText(this@HotkeyAccessibilityService, "截图失败 (错误码: $errorCode)", Toast.LENGTH_SHORT).show()
