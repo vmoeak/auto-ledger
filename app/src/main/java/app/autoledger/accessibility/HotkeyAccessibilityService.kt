@@ -112,9 +112,9 @@ class HotkeyAccessibilityService : AccessibilityService() {
       val pendingRoot = rootInActiveWindow
       Log.i(
         TAG,
-        "service reconnected with pending screenshot (reason=$pendingReason), retrying in 500ms rootPkg=${pendingRoot?.packageName} rootNull=${pendingRoot == null}"
+        "service reconnected with pending screenshot (reason=$pendingReason), switching to MediaProjection in 500ms rootPkg=${pendingRoot?.packageName} rootNull=${pendingRoot == null}"
       )
-      handler.postDelayed({ takeScreenshotFallback(pendingReason, rootInActiveWindow?.packageName?.toString().orEmpty()) }, 500)
+      handler.postDelayed({ startMediaProjectionCapture(pendingReason) }, 500)
     }
   }
 
@@ -253,6 +253,15 @@ class HotkeyAccessibilityService : AccessibilityService() {
 
     if (extracted.isBlank()) {
       Log.w(TAG, "extracted text is blank for pkg=$rootPkg, falling back to screenshot")
+      if (reason.startsWith("qs_tile")) {
+        Log.w(TAG, "qs_tile blank text: prefer MediaProjection capture")
+        val started = startMediaProjectionCapture(reason)
+        if (!started) {
+          Log.w(TAG, "MediaProjection start failed, showing manual entry overlay")
+          showManualEntry(rootPkg)
+        }
+        return
+      }
       val fallbackStarted = takeScreenshotFallback(reason, rootPkg)
       Log.i(TAG, "screenshot fallback started=$fallbackStarted reason=$reason rootPkg=$rootPkg")
       if (!fallbackStarted) {
@@ -342,99 +351,109 @@ class HotkeyAccessibilityService : AccessibilityService() {
     }
     screenshotTimeoutRunnable = timeoutRunnable
     handler.postDelayed(timeoutRunnable, screenshotTimeoutMs)
-    takeScreenshot(
-      Display.DEFAULT_DISPLAY,
-      mainExecutor,
-      object : TakeScreenshotCallback {
-        override fun onSuccess(result: ScreenshotResult) {
-          screenshotCallbackPending = false
-          screenshotTimeoutRunnable?.let { handler.removeCallbacks(it) }
-          clearPendingScreenshot()
-          Log.i(TAG, "screenshot success rootPkg=$rootPkg")
-          try {
-            val hwBuf = result.hardwareBuffer
-            val colorSpace = result.colorSpace
-            val hardwareBmp = Bitmap.wrapHardwareBuffer(hwBuf, colorSpace)
-            hwBuf.close()
-            if (hardwareBmp == null) {
-              Log.e(TAG, "wrapHardwareBuffer returned null rootPkg=$rootPkg")
-              handler.post {
-                Toast.makeText(this@HotkeyAccessibilityService, "截图失败", Toast.LENGTH_SHORT).show()
+    try {
+      takeScreenshot(
+        Display.DEFAULT_DISPLAY,
+        mainExecutor,
+        object : TakeScreenshotCallback {
+          override fun onSuccess(result: ScreenshotResult) {
+            screenshotCallbackPending = false
+            screenshotTimeoutRunnable?.let { handler.removeCallbacks(it) }
+            clearPendingScreenshot()
+            Log.i(TAG, "screenshot success rootPkg=$rootPkg")
+            try {
+              val hwBuf = result.hardwareBuffer
+              val colorSpace = result.colorSpace
+              val hardwareBmp = Bitmap.wrapHardwareBuffer(hwBuf, colorSpace)
+              hwBuf.close()
+              if (hardwareBmp == null) {
+                Log.e(TAG, "wrapHardwareBuffer returned null rootPkg=$rootPkg")
+                handler.post {
+                  Toast.makeText(this@HotkeyAccessibilityService, "截图失败", Toast.LENGTH_SHORT).show()
+                }
+                return
               }
-              return
-            }
-            // Convert to software bitmap so JPEG compression works
-            val swBmp = hardwareBmp.copy(Bitmap.Config.ARGB_8888, false)
-            hardwareBmp.recycle()
-            if (swBmp == null) {
-              Log.e(TAG, "bitmap copy to software failed rootPkg=$rootPkg")
-              handler.post {
-                Toast.makeText(this@HotkeyAccessibilityService, "截图失败", Toast.LENGTH_SHORT).show()
+              // Convert to software bitmap so JPEG compression works
+              val swBmp = hardwareBmp.copy(Bitmap.Config.ARGB_8888, false)
+              hardwareBmp.recycle()
+              if (swBmp == null) {
+                Log.e(TAG, "bitmap copy to software failed rootPkg=$rootPkg")
+                handler.post {
+                  Toast.makeText(this@HotkeyAccessibilityService, "截图失败", Toast.LENGTH_SHORT).show()
+                }
+                return
               }
-              return
-            }
-            Log.i(TAG, "screenshot bitmap ${swBmp.width}x${swBmp.height}, starting overlay in screenshot mode rootPkg=$rootPkg")
-            ScreenshotStore.put(swBmp)
-            val i = Intent(this@HotkeyAccessibilityService, OverlayConfirmService::class.java)
-            i.putExtra(Actions.EXTRA_TRIGGER_SOURCE, reason)
-            i.putExtra(Actions.EXTRA_SCREENSHOT_MODE, true)
-            val component = startService(i)
-            Log.i(TAG, "OverlayConfirmService started from screenshot component=$component")
-          } catch (e: Exception) {
-            Log.e(TAG, "screenshot post-processing failed rootPkg=$rootPkg", e)
-            handler.post {
-              Toast.makeText(this@HotkeyAccessibilityService, "截图处理失败：${e.message}", Toast.LENGTH_SHORT).show()
+              Log.i(TAG, "screenshot bitmap ${swBmp.width}x${swBmp.height}, starting overlay in screenshot mode rootPkg=$rootPkg")
+              ScreenshotStore.put(swBmp)
+              val i = Intent(this@HotkeyAccessibilityService, OverlayConfirmService::class.java)
+              i.putExtra(Actions.EXTRA_TRIGGER_SOURCE, reason)
+              i.putExtra(Actions.EXTRA_SCREENSHOT_MODE, true)
+              val component = startService(i)
+              Log.i(TAG, "OverlayConfirmService started from screenshot component=$component")
+            } catch (e: Exception) {
+              Log.e(TAG, "screenshot post-processing failed rootPkg=$rootPkg", e)
+              handler.post {
+                Toast.makeText(this@HotkeyAccessibilityService, "截图处理失败：${e.message}", Toast.LENGTH_SHORT).show()
+              }
             }
           }
-        }
 
-        override fun onFailure(errorCode: Int) {
-          screenshotCallbackPending = false
-          screenshotTimeoutRunnable?.let { handler.removeCallbacks(it) }
-          clearPendingScreenshot()
-          Log.e(
-            TAG,
-            "takeScreenshot failed errorCode=$errorCode reason=$reason rootPkg=$rootPkg api=${Build.VERSION.SDK_INT} " +
-              "display=${Display.DEFAULT_DISPLAY} windowCount=${try { windows?.size ?: 0 } catch (_: Exception) { -1 }}"
-          )
-          logScreenshotErrorDetails(errorCode)
-          val root = rootInActiveWindow
-          Log.w(
-            TAG,
-            "takeScreenshot context rootNull=${root == null} rootPkg=${root?.packageName} rootClass=${root?.className} " +
-              "rootChildCount=${root?.childCount ?: -1} rootWindowId=${root?.windowId ?: -1}"
-          )
-          val shouldTryMediaProjection = errorCode == ERROR_TAKE_SCREENSHOT_NO_ACCESS
-            || errorCode == ERROR_TAKE_SCREENSHOT_NO_HARDWARE_BUFFER
-            || errorCode == ERROR_TAKE_SCREENSHOT_INTERNAL_ERROR
-            || errorCode == ERROR_TAKE_SCREENSHOT_INVALID_DISPLAY
-            || errorCode == ERROR_TAKE_SCREENSHOT_INVALID_SCALE
-          if (shouldTryMediaProjection && startMediaProjectionCapture(reason)) {
-            handler.post {
-              Toast.makeText(
-                this@HotkeyAccessibilityService,
-                "截图失败，正在尝试使用屏幕录制授权",
-                Toast.LENGTH_SHORT
-              ).show()
+          override fun onFailure(errorCode: Int) {
+            screenshotCallbackPending = false
+            screenshotTimeoutRunnable?.let { handler.removeCallbacks(it) }
+            clearPendingScreenshot()
+            Log.e(
+              TAG,
+              "takeScreenshot failed errorCode=$errorCode reason=$reason rootPkg=$rootPkg api=${Build.VERSION.SDK_INT} " +
+                "display=${Display.DEFAULT_DISPLAY} windowCount=${try { windows?.size ?: 0 } catch (_: Exception) { -1 }}"
+            )
+            logScreenshotErrorDetails(errorCode)
+            val root = rootInActiveWindow
+            Log.w(
+              TAG,
+              "takeScreenshot context rootNull=${root == null} rootPkg=${root?.packageName} rootClass=${root?.className} " +
+                "rootChildCount=${root?.childCount ?: -1} rootWindowId=${root?.windowId ?: -1}"
+            )
+            val shouldTryMediaProjection = errorCode == ERROR_TAKE_SCREENSHOT_NO_ACCESS
+              || errorCode == ERROR_TAKE_SCREENSHOT_NO_HARDWARE_BUFFER
+              || errorCode == ERROR_TAKE_SCREENSHOT_INTERNAL_ERROR
+              || errorCode == ERROR_TAKE_SCREENSHOT_INVALID_DISPLAY
+              || errorCode == ERROR_TAKE_SCREENSHOT_INVALID_SCALE
+            if (shouldTryMediaProjection && startMediaProjectionCapture(reason)) {
+              handler.post {
+                Toast.makeText(
+                  this@HotkeyAccessibilityService,
+                  "截图失败，正在尝试使用屏幕录制授权",
+                  Toast.LENGTH_SHORT
+                ).show()
+              }
+              return
             }
-            return
-          }
-          val shouldShowManualEntry = errorCode == ERROR_TAKE_SCREENSHOT_INTERVAL_TIME_SHORT
-            || errorCode == ERROR_TAKE_SCREENSHOT_INVALID_DISPLAY
-            || errorCode == ERROR_TAKE_SCREENSHOT_INVALID_SCALE
-            || errorCode == ERROR_TAKE_SCREENSHOT_NO_ACCESS
-            || errorCode == ERROR_TAKE_SCREENSHOT_NO_HARDWARE_BUFFER
-            || errorCode == ERROR_TAKE_SCREENSHOT_INTERNAL_ERROR
-          if (shouldShowManualEntry) {
-            Log.w(TAG, "takeScreenshot failed errorCode=$errorCode, showing manual entry")
-            showManualEntry(rootPkg)
-          }
-          handler.post {
-            Toast.makeText(this@HotkeyAccessibilityService, "截图失败 (错误码: $errorCode)", Toast.LENGTH_SHORT).show()
+            val shouldShowManualEntry = errorCode == ERROR_TAKE_SCREENSHOT_INTERVAL_TIME_SHORT
+              || errorCode == ERROR_TAKE_SCREENSHOT_INVALID_DISPLAY
+              || errorCode == ERROR_TAKE_SCREENSHOT_INVALID_SCALE
+              || errorCode == ERROR_TAKE_SCREENSHOT_NO_ACCESS
+              || errorCode == ERROR_TAKE_SCREENSHOT_NO_HARDWARE_BUFFER
+              || errorCode == ERROR_TAKE_SCREENSHOT_INTERNAL_ERROR
+            if (shouldShowManualEntry) {
+              Log.w(TAG, "takeScreenshot failed errorCode=$errorCode, showing manual entry")
+              showManualEntry(rootPkg)
+            }
+            handler.post {
+              Toast.makeText(this@HotkeyAccessibilityService, "截图失败 (错误码: $errorCode)", Toast.LENGTH_SHORT).show()
+            }
           }
         }
+      )
+    } catch (e: Throwable) {
+      screenshotCallbackPending = false
+      screenshotTimeoutRunnable?.let { handler.removeCallbacks(it) }
+      clearPendingScreenshot()
+      Log.e(TAG, "takeScreenshot threw exception", e)
+      if (!startMediaProjectionCapture(reason)) {
+        showManualEntry(rootPkg)
       }
-    )
+    }
     return true
   }
 
