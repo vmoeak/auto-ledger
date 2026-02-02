@@ -239,12 +239,12 @@ class HotkeyAccessibilityService : AccessibilityService() {
   // ---- Pending screenshot flag (survives process death via SharedPreferences) ----
 
   private fun setPendingScreenshot(reason: String) {
-    getSharedPreferences("autoledger_internal", Context.MODE_PRIVATE)
+    val ok = getSharedPreferences("autoledger_internal", Context.MODE_PRIVATE)
       .edit()
       .putLong("pendingScreenshotTs", System.currentTimeMillis())
       .putString("pendingScreenshotReason", reason)
-      .apply()
-    Log.d(TAG, "setPendingScreenshot reason=$reason")
+      .commit()   // commit() is synchronous — survives immediate process death
+    Log.d(TAG, "setPendingScreenshot reason=$reason committed=$ok")
   }
 
   private fun clearPendingScreenshot() {
