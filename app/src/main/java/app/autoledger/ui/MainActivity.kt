@@ -12,6 +12,7 @@ import app.autoledger.core.AppConfig
 import app.autoledger.core.ShizukuCapture
 import app.autoledger.databinding.ActivityMainBinding
 import rikka.shizuku.Shizuku
+import rikka.shizuku.ShizukuProvider
 
 class MainActivity : AppCompatActivity() {
 
@@ -79,6 +80,13 @@ class MainActivity : AppCompatActivity() {
     Shizuku.addRequestPermissionResultListener(shizukuPermissionListener)
     Shizuku.addBinderReceivedListenerSticky(shizukuBinderListener)
     Shizuku.addBinderDeadListener(shizukuBinderDeadListener)
+    try {
+      if (Shizuku.getBinder() == null) {
+        ShizukuProvider.requestBinderForNonProviderProcess(this)
+      }
+    } catch (e: Exception) {
+      Log.w(TAG, "requestBinderForNonProviderProcess failed", e)
+    }
 
     b.saveConfig.setOnClickListener {
       cfg.baseUrl = b.baseUrl.text?.toString() ?: ""
@@ -117,6 +125,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     b.requestShizuku.setOnClickListener {
+      try {
+        if (Shizuku.getBinder() == null) {
+          ShizukuProvider.requestBinderForNonProviderProcess(this)
+        }
+      } catch (e: Exception) {
+        Log.w(TAG, "requestBinderForNonProviderProcess failed", e)
+      }
       if (!ShizukuCapture.isAvailable()) {
         val ok = try { Shizuku.pingBinder() } catch (_: Exception) { false }
         if (!ok) {

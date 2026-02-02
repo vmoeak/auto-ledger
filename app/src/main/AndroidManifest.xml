@@ -88,6 +88,12 @@
         android:resource="@xml/autoledger_accessibility" />
     </service>
 
+    <provider
+      android:name="rikka.shizuku.ShizukuProvider"
+      android:authorities="${applicationId}.shizuku.provider"
+      android:exported="false"
+      android:multiprocess="false" />
+
   </application>
 
 </manifest>
