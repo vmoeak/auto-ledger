@@ -9,6 +9,7 @@ import app.autoledger.accessibility.HotkeyAccessibilityService
 import app.autoledger.accessibility.ScreenTextCache
 import app.autoledger.core.Actions
 import app.autoledger.core.CapturePermissionStore
+import app.autoledger.core.ShizukuCapture
 import app.autoledger.overlay.OverlayConfirmService
 
 /**
@@ -36,7 +37,9 @@ class TriggerActivity : Activity() {
         Log.i(TAG, "broadcasted trigger (accessibility running)")
       } catch (e: Exception) {
         Log.e(TAG, "broadcast failed", e)
-        startMediaProjectionCapture("qs_tile_broadcast_failed")
+        if (!tryShizuku("qs_tile_broadcast_failed")) {
+          startMediaProjectionCapture("qs_tile_broadcast_failed")
+        }
       }
     } else {
       // Fallback path: AccessibilityService isn't running; use cached screen text.
@@ -58,11 +61,15 @@ class TriggerActivity : Activity() {
             "未获取到页面文本：正在尝试屏幕录制截图",
             Toast.LENGTH_SHORT
           ).show()
-          startMediaProjectionCapture("qs_tile_no_accessibility")
+          if (!tryShizuku("qs_tile_no_accessibility")) {
+            startMediaProjectionCapture("qs_tile_no_accessibility")
+          }
         }
       } catch (e: Exception) {
         Log.e(TAG, "fallback start service failed", e)
-        startMediaProjectionCapture("qs_tile_fallback_failed")
+        if (!tryShizuku("qs_tile_fallback_failed")) {
+          startMediaProjectionCapture("qs_tile_fallback_failed")
+        }
       }
     }
 
@@ -86,5 +93,13 @@ class TriggerActivity : Activity() {
       Log.e(TAG, "startMediaProjectionCapture failed", e)
       Toast.makeText(this, "启动截图失败: ${e.message}", Toast.LENGTH_SHORT).show()
     }
+  }
+
+  private fun tryShizuku(reason: String): Boolean {
+    val started = ShizukuCapture.captureToOverlay(this, reason)
+    if (started) {
+      Log.i(TAG, "Shizuku capture started reason=$reason")
+    }
+    return started
   }
 }

@@ -15,6 +15,11 @@
   <string name="section_ledger">账本文件</string>
   <string name="btn_choose_ledger">选择 ledger.csv（文件位置）</string>
 
+  <string name="section_shizuku">高级截图（Shizuku/ADB）</string>
+  <string name="desc_shizuku">需要安装 Shizuku 并授权，可在不弹系统录屏提示的情况下截图。</string>
+  <string name="switch_shizuku_enable">启用 Shizuku/ADB 截图</string>
+  <string name="btn_shizuku_request">请求 Shizuku 授权</string>
+
   <string name="btn_view_stats">查看统计</string>
 
   <string name="label_status">状态</string>
