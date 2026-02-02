@@ -17,6 +17,7 @@ import android.view.LayoutInflater
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import app.autoledger.core.AppConfig
+import app.autoledger.core.Actions
 import app.autoledger.core.CaptureForegroundService
 import app.autoledger.core.CapturePermissionStore
 import app.autoledger.core.LedgerWriter
@@ -42,7 +43,7 @@ class CaptureActivity : AppCompatActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
     Log.i(TAG, "onCreate")
-    val src = intent?.getStringExtra("triggerSource") ?: "(unknown)"
+    val src = intent?.getStringExtra(Actions.EXTRA_TRIGGER_SOURCE) ?: "(unknown)"
     Log.i(TAG, "triggerSource=$src")
     cfg = AppConfig(this)
     Log.i(TAG, "cfg baseUrl=${cfg.baseUrl} model=${cfg.model} apiKeySet=${cfg.apiKey.isNotBlank()} ledgerSet=${cfg.ledgerUri != null}")
