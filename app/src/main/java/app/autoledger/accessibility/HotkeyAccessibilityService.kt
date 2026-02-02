@@ -86,6 +86,9 @@ class HotkeyAccessibilityService : AccessibilityService() {
     try {
       val root = rootInActiveWindow
       val pkg = root?.packageName?.toString().orEmpty()
+      val eventType = event?.eventType ?: -1
+      val eventPkg = event?.packageName?.toString().orEmpty()
+      Log.d(TAG, "onAccessibilityEvent type=0x${Integer.toHexString(eventType)} eventPkg=$eventPkg rootPkg=$pkg rootNull=${root == null}")
       val shouldSkip = pkg.contains("systemui", ignoreCase = true)
                     || pkg.contains("launcher", ignoreCase = true)
                     || pkg == packageName
@@ -94,8 +97,13 @@ class HotkeyAccessibilityService : AccessibilityService() {
       val extracted = UiTextExtractor.extract(root)
       if (extracted.isNotBlank()) {
         ScreenTextCache.put(this, extracted)
+        Log.d(TAG, "cache updated pkg=$pkg extractedLen=${extracted.length}")
+      } else {
+        Log.d(TAG, "extracted text blank for pkg=$pkg, skipping cache update")
       }
-    } catch (_: Exception) {}
+    } catch (e: Exception) {
+      Log.w(TAG, "onAccessibilityEvent error", e)
+    }
   }
 
   override fun onInterrupt() {
@@ -137,20 +145,25 @@ class HotkeyAccessibilityService : AccessibilityService() {
 
     fun poll() {
       val now = System.currentTimeMillis()
-      val pkg = rootInActiveWindow?.packageName?.toString().orEmpty()
+      val elapsed = now - start
+      val root = rootInActiveWindow
+      val pkg = root?.packageName?.toString().orEmpty()
+      val windowId = root?.windowId ?: -1
+      val childCount = root?.childCount ?: -1
+      Log.d(TAG, "poll: elapsed=${elapsed}ms pkg=$pkg windowId=$windowId childCount=$childCount rootNull=${root == null}")
       // Skip SystemUI, launcher, and our own app (TriggerActivity may briefly appear)
       val shouldSkip = pkg.contains("systemui", ignoreCase = true)
                     || pkg.contains("launcher", ignoreCase = true)
                     || pkg == myPkg
 
       if (!shouldSkip && pkg.isNotBlank()) {
-        Log.i(TAG, "Target app in foreground, extracting from pkg=$pkg")
+        Log.i(TAG, "Target app in foreground, extracting from pkg=$pkg windowId=$windowId childCount=$childCount")
         triggerCapture("qs_tile")
         return
       }
 
       if (now - start >= maxWaitMs) {
-        Log.w(TAG, "Timed out waiting for target app (pkg=$pkg). Proceeding anyway.")
+        Log.w(TAG, "Timed out waiting for target app (pkg=$pkg windowId=$windowId). Proceeding anyway.")
         triggerCapture("qs_tile")
         return
       }
@@ -164,19 +177,37 @@ class HotkeyAccessibilityService : AccessibilityService() {
   private fun triggerCapture(reason: String) {
     val now = System.currentTimeMillis()
     if (now - lastTriggerAt < debounceMs) {
-      Log.i(TAG, "debounced")
+      Log.i(TAG, "debounced (reason=$reason elapsed=${now - lastTriggerAt}ms)")
       return
     }
     lastTriggerAt = now
 
     // Extract text from the CURRENT screen BEFORE launching our UI.
     val root = rootInActiveWindow
+    val rootPkg = root?.packageName?.toString().orEmpty()
+    val rootClass = root?.className?.toString().orEmpty()
+    val rootChildCount = root?.childCount ?: -1
+    val rootWindowId = root?.windowId ?: -1
+    Log.i(TAG, "triggerCapture reason=$reason rootPkg=$rootPkg rootClass=$rootClass childCount=$rootChildCount windowId=$rootWindowId rootNull=${root == null}")
+
+    // List accessible windows for diagnostics
+    try {
+      val windowList = windows
+      Log.i(TAG, "accessible windows count=${windowList?.size ?: 0}")
+      windowList?.forEachIndexed { idx, w ->
+        Log.i(TAG, "  window[$idx] id=${w.id} type=${w.type} layer=${w.layer} title=${w.title} pkg=${w.root?.packageName}")
+      }
+    } catch (e: Exception) {
+      Log.w(TAG, "failed to enumerate windows", e)
+    }
+
     val extracted = UiTextExtractor.extract(root)
-    Log.i(TAG, "triggerCapture reason=$reason extractedLen=${extracted.length}")
+    Log.i(TAG, "triggerCapture extractedLen=${extracted.length}")
     // WARNING: logs may contain sensitive info from the current screen.
     Log.i(TAG, "extractedText BEGIN\n$extracted\nextractedText END")
 
     if (extracted.isBlank()) {
+      Log.w(TAG, "extracted text is blank for pkg=$rootPkg, NOT starting overlay service")
       Toast.makeText(this, "No readable text on current screen (Accessibility)", Toast.LENGTH_SHORT).show()
       return
     }
@@ -186,8 +217,9 @@ class HotkeyAccessibilityService : AccessibilityService() {
       i.putExtra(Actions.EXTRA_TRIGGER_SOURCE, "hotkey")
       i.putExtra(Actions.EXTRA_EXTRACTED_TEXT, extracted)
       startService(i)
+      Log.i(TAG, "OverlayConfirmService started successfully")
     } catch (e: Exception) {
-      Log.e(TAG, "startService failed", e)
+      Log.e(TAG, "startService(OverlayConfirmService) failed", e)
     }
   }
 }

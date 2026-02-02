@@ -21,6 +21,7 @@ class TriggerActivity : Activity() {
     super.onCreate(savedInstanceState)
 
     val accessibilityRunning = HotkeyAccessibilityService.isRunning
+    Log.i(TAG, "onCreate: accessibilityRunning=$accessibilityRunning")
 
     if (accessibilityRunning) {
       // Preferred path: notify AccessibilityService (it can extract fresh screen text).

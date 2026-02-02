@@ -14,6 +14,7 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
+import android.provider.Settings
 import app.autoledger.R
 import app.autoledger.core.Actions
 import app.autoledger.core.AppConfig
@@ -41,7 +42,8 @@ class OverlayConfirmService : Service() {
     Log.i(TAG, "onStartCommand src=$triggerSource extractedLen=${extractedText.length}")
 
     if (extractedText.isBlank()) {
-      Toast.makeText(this, "当前页面未识别到可读文字（需要无障碍辅助读取）", Toast.LENGTH_SHORT).show()
+      Log.w(TAG, "extractedText is blank, showing toast and stopping")
+      Toast.makeText(this, "\u5f53\u524d\u9875\u9762\u672a\u8bc6\u522b\u5230\u53ef\u8bfb\u6587\u5b57\uff08\u9700\u8981\u65e0\u969c\u788d\u8f85\u52a9\u8bfb\u53d6\uff09", Toast.LENGTH_SHORT).show()
       stopSelf()
       return START_NOT_STICKY
     }
@@ -54,6 +56,23 @@ class OverlayConfirmService : Service() {
 
   private fun showOrReplaceCard() {
     removeCard()
+
+    val canDraw = Settings.canDrawOverlays(this)
+    Log.i(TAG, "showOrReplaceCard: canDrawOverlays=$canDraw")
+    if (!canDraw) {
+      Log.e(TAG, "Overlay permission NOT granted - cannot show card")
+      Toast.makeText(this, "\u65e0\u6cd5\u5f39\u51fa\u60ac\u6d6e\u7a97\uff1a\u8bf7\u5728\u7cfb\u7edf\u8bbe\u7f6e\u4e2d\u5f00\u542f\u201c\u5728\u5176\u4ed6\u5e94\u7528\u4e0a\u5c42\u663e\u793a/\u60ac\u6d6e\u7a97\u201d\u6743\u9650", Toast.LENGTH_LONG).show()
+      try {
+        val i = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION).apply {
+          data = android.net.Uri.parse("package:$packageName")
+          addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        startActivity(i)
+      } catch (_: Exception) {}
+      stopSelf()
+      return
+    }
+
     val v = LayoutInflater.from(this).inflate(R.layout.overlay_confirm_card, null)
 
     val params = WindowManager.LayoutParams(
@@ -67,6 +86,8 @@ class OverlayConfirmService : Service() {
     params.x = 24
     params.y = 0
 
+    Log.i(TAG, "addView: type=${params.type} flags=0x${Integer.toHexString(params.flags)} gravity=${params.gravity}")
+
     // Buttons
     v.findViewById<Button>(R.id.cancelBtn).setOnClickListener {
       removeCard()
@@ -79,12 +100,12 @@ class OverlayConfirmService : Service() {
     rootView = v
     try {
       wm.addView(v, params)
+      Log.i(TAG, "wm.addView succeeded - overlay card should be visible")
     } catch (e: Exception) {
-      Log.e(TAG, "wm.addView failed (overlay permission?)", e)
-      Toast.makeText(this, "无法弹出悬浮窗：请在系统设置中开启“在其他应用上层显示/悬浮窗”权限", Toast.LENGTH_LONG).show()
-      // Best effort: jump to overlay permission settings.
+      Log.e(TAG, "wm.addView FAILED (exception class=${e.javaClass.simpleName})", e)
+      Toast.makeText(this, "\u65e0\u6cd5\u5f39\u51fa\u60ac\u6d6e\u7a97\uff1a\u8bf7\u5728\u7cfb\u7edf\u8bbe\u7f6e\u4e2d\u5f00\u542f\u201c\u5728\u5176\u4ed6\u5e94\u7528\u4e0a\u5c42\u663e\u793a/\u60ac\u6d6e\u7a97\u201d\u6743\u9650", Toast.LENGTH_LONG).show()
       try {
-        val i = Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION).apply {
+        val i = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION).apply {
           data = android.net.Uri.parse("package:$packageName")
           addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
@@ -97,12 +118,12 @@ class OverlayConfirmService : Service() {
   private fun parseAndBind(extractedText: String) {
     val cfg = AppConfig(this)
     if (cfg.apiKey.isBlank()) {
-      toast("API Key 未设置")
+      toast("API Key \u672a\u8bbe\u7f6e")
       removeCard(); stopSelf(); return
     }
     val ledgerUri = cfg.ledgerUri
     if (ledgerUri == null) {
-      toast("未选择账本文件（ledger.csv）")
+      toast("\u672a\u9009\u62e9\u8d26\u672c\u6587\u4ef6\uff08ledger.csv\uff09")
       removeCard(); stopSelf(); return
     }
 
@@ -128,14 +149,14 @@ class OverlayConfirmService : Service() {
 
         Handler(Looper.getMainLooper()).post {
           val now = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
-          subtitle.text = "确认并保存"
+          subtitle.text = "\u786e\u8ba4\u5e76\u4fdd\u5b58"
           timeEt.setText(app.autoledger.core.LedgerWriter.normalizeTime(parsed.time_local ?: now))
           appEt.setText(parsed.app ?: "Unknown")
           amountEt.setText(app.autoledger.core.LedgerWriter.formatAmount(parsed.amount))
           currencyEt.setText(parsed.currency ?: "CNY")
           merchantEt.setText(parsed.merchant ?: "")
           noteEt.setText(parsed.note ?: "")
-          confTv.text = "置信度：${parsed.confidence ?: ""}"
+          confTv.text = "\u7f6e\u4fe1\u5ea6\uff1a${parsed.confidence ?: ""}"
           saveBtn.isEnabled = true
 
           saveBtn.setOnClickListener {
@@ -153,10 +174,10 @@ class OverlayConfirmService : Service() {
                 LedgerWriter.csvEscape(LedgerWriter.compactRaw(parsed.raw))
               ).joinToString(",")
               LedgerWriter.appendRow(this, ledgerUri, row)
-              toast("已保存")
+              toast("\u5df2\u4fdd\u5b58")
             } catch (e: Exception) {
               Log.e(TAG, "save failed", e)
-              toast("保存失败：${e.message}")
+              toast("\u4fdd\u5b58\u5931\u8d25\uff1a${e.message}")
             }
             removeCard(); stopSelf()
           }
@@ -164,8 +185,8 @@ class OverlayConfirmService : Service() {
       } catch (e: Exception) {
         Log.e(TAG, "parse failed", e)
         Handler(Looper.getMainLooper()).post {
-          subtitle.text = "解析失败"
-          toast("解析失败：${e.message}")
+          subtitle.text = "\u89e3\u6790\u5931\u8d25"
+          toast("\u89e3\u6790\u5931\u8d25\uff1a${e.message}")
           // Keep the card briefly so users can see something happened even if toast is suppressed.
           Handler(Looper.getMainLooper()).postDelayed({
             removeCard(); stopSelf()
@@ -179,12 +200,18 @@ class OverlayConfirmService : Service() {
 
   private fun removeCard() {
     try {
-      rootView?.let { wm.removeView(it) }
-    } catch (_: Exception) {}
+      rootView?.let {
+        wm.removeView(it)
+        Log.d(TAG, "removeCard: overlay removed")
+      }
+    } catch (e: Exception) {
+      Log.w(TAG, "removeCard failed", e)
+    }
     rootView = null
   }
 
   override fun onDestroy() {
+    Log.d(TAG, "onDestroy")
     removeCard()
     super.onDestroy()
   }
