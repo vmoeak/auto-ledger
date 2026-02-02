@@ -65,7 +65,11 @@ object ShizukuCapture {
   private fun captureOnce(): Bitmap? {
     var proc: Process? = null
     return try {
-      proc = Shizuku.newProcess(arrayOf("screencap", "-p"), null, null)
+      proc = newProcess(arrayOf("screencap", "-p"))
+      if (proc == null) {
+        Log.e(TAG, "Shizuku.newProcess not available")
+        return null
+      }
       val outputBytes = proc.inputStream.use { input ->
         val buf = ByteArrayOutputStream()
         input.copyTo(buf)
@@ -90,6 +94,22 @@ object ShizukuCapture {
       try {
         proc?.destroy()
       } catch (_: Exception) {}
+    }
+  }
+
+  private fun newProcess(cmd: Array<String>): Process? {
+    return try {
+      val method = Shizuku::class.java.getDeclaredMethod(
+        "newProcess",
+        Array<String>::class.java,
+        Array<String>::class.java,
+        String::class.java
+      )
+      method.isAccessible = true
+      method.invoke(null, cmd, null, null) as? Process
+    } catch (e: Exception) {
+      Log.e(TAG, "reflect newProcess failed", e)
+      null
     }
   }
 }
