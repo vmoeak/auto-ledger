@@ -361,12 +361,26 @@ class HotkeyAccessibilityService : AccessibilityService() {
 
         override fun onFailure(errorCode: Int) {
           clearPendingScreenshot()
-          Log.e(TAG, "takeScreenshot failed errorCode=$errorCode reason=$reason rootPkg=$rootPkg")
+          Log.e(
+            TAG,
+            "takeScreenshot failed errorCode=$errorCode reason=$reason rootPkg=$rootPkg api=${Build.VERSION.SDK_INT} " +
+              "display=${Display.DEFAULT_DISPLAY} windowCount=${try { windows?.size ?: 0 } catch (_: Exception) { -1 }}"
+          )
           logScreenshotErrorDetails(errorCode)
-          if (errorCode == ERROR_TAKE_SCREENSHOT_INTERVAL_TIME_SHORT
+          val root = rootInActiveWindow
+          Log.w(
+            TAG,
+            "takeScreenshot context rootNull=${root == null} rootPkg=${root?.packageName} rootClass=${root?.className} " +
+              "rootChildCount=${root?.childCount ?: -1} rootWindowId=${root?.windowId ?: -1}"
+          )
+          val shouldShowManualEntry = errorCode == ERROR_TAKE_SCREENSHOT_INTERVAL_TIME_SHORT
             || errorCode == ERROR_TAKE_SCREENSHOT_INVALID_DISPLAY
-            || errorCode == ERROR_TAKE_SCREENSHOT_INVALID_SCALE) {
-            Log.w(TAG, "takeScreenshot failed with retryable errorCode=$errorCode, showing manual entry")
+            || errorCode == ERROR_TAKE_SCREENSHOT_INVALID_SCALE
+            || errorCode == ERROR_TAKE_SCREENSHOT_NO_ACCESS
+            || errorCode == ERROR_TAKE_SCREENSHOT_NO_HARDWARE_BUFFER
+            || errorCode == ERROR_TAKE_SCREENSHOT_INTERNAL_ERROR
+          if (shouldShowManualEntry) {
+            Log.w(TAG, "takeScreenshot failed errorCode=$errorCode, showing manual entry")
             showManualEntry(rootPkg)
           }
           handler.post {
