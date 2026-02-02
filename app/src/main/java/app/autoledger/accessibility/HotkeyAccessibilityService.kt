@@ -51,9 +51,13 @@ class HotkeyAccessibilityService : AccessibilityService() {
   private var volumeUpDownAt: Long = 0L
   private var longPressTriggered: Boolean = false
   private var lastTriggerAt: Long = 0L
+  private var screenshotCallbackPending: Boolean = false
+  private var screenshotTimeoutToken: Long = 0L
+  private var screenshotTimeoutRunnable: Runnable? = null
 
   private val longPressMs = 650L
   private val debounceMs = 2500L
+  private val screenshotTimeoutMs = 3500L
 
   private val longPressRunnable = Runnable {
     // Still held?
@@ -315,11 +319,27 @@ class HotkeyAccessibilityService : AccessibilityService() {
       TAG,
       "taking screenshot as fallback (reason=$reason rootPkg=$rootPkg rootNull=${root == null} windowCount=$windowCount)"
     )
+    screenshotCallbackPending = true
+    screenshotTimeoutToken = System.currentTimeMillis()
+    screenshotTimeoutRunnable?.let { handler.removeCallbacks(it) }
+    val timeoutToken = screenshotTimeoutToken
+    val timeoutRunnable = Runnable {
+      if (screenshotCallbackPending && screenshotTimeoutToken == timeoutToken) {
+        Log.e(TAG, "takeScreenshot timed out after ${screenshotTimeoutMs}ms, showing manual entry")
+        screenshotCallbackPending = false
+        clearPendingScreenshot()
+        showManualEntry(rootPkg)
+      }
+    }
+    screenshotTimeoutRunnable = timeoutRunnable
+    handler.postDelayed(timeoutRunnable, screenshotTimeoutMs)
     takeScreenshot(
       Display.DEFAULT_DISPLAY,
       mainExecutor,
       object : TakeScreenshotCallback {
         override fun onSuccess(result: ScreenshotResult) {
+          screenshotCallbackPending = false
+          screenshotTimeoutRunnable?.let { handler.removeCallbacks(it) }
           clearPendingScreenshot()
           Log.i(TAG, "screenshot success rootPkg=$rootPkg")
           try {
@@ -360,6 +380,8 @@ class HotkeyAccessibilityService : AccessibilityService() {
         }
 
         override fun onFailure(errorCode: Int) {
+          screenshotCallbackPending = false
+          screenshotTimeoutRunnable?.let { handler.removeCallbacks(it) }
           clearPendingScreenshot()
           Log.e(
             TAG,
