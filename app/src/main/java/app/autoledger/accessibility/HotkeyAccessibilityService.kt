@@ -96,7 +96,11 @@ class HotkeyAccessibilityService : AccessibilityService() {
     // the flag survives in SharedPreferences. Retry the screenshot now.
     val pendingReason = consumePendingScreenshot()
     if (pendingReason != null) {
-      Log.i(TAG, "service reconnected with pending screenshot (reason=$pendingReason), retrying in 500ms")
+      val pendingRoot = rootInActiveWindow
+      Log.i(
+        TAG,
+        "service reconnected with pending screenshot (reason=$pendingReason), retrying in 500ms rootPkg=${pendingRoot?.packageName} rootNull=${pendingRoot == null}"
+      )
       handler.postDelayed({ takeScreenshotFallback(pendingReason, rootInActiveWindow?.packageName?.toString().orEmpty()) }, 500)
     }
   }
@@ -236,7 +240,9 @@ class HotkeyAccessibilityService : AccessibilityService() {
 
     if (extracted.isBlank()) {
       Log.w(TAG, "extracted text is blank for pkg=$rootPkg, falling back to screenshot")
-      if (!takeScreenshotFallback(reason, rootPkg)) {
+      val fallbackStarted = takeScreenshotFallback(reason, rootPkg)
+      Log.i(TAG, "screenshot fallback started=$fallbackStarted reason=$reason rootPkg=$rootPkg")
+      if (!fallbackStarted) {
         Log.w(TAG, "screenshot fallback not possible, showing manual entry overlay")
         showManualEntry(rootPkg)
       }
@@ -247,8 +253,8 @@ class HotkeyAccessibilityService : AccessibilityService() {
       val i = Intent(this, OverlayConfirmService::class.java)
       i.putExtra(Actions.EXTRA_TRIGGER_SOURCE, "hotkey")
       i.putExtra(Actions.EXTRA_EXTRACTED_TEXT, extracted)
-      startService(i)
-      Log.i(TAG, "OverlayConfirmService started successfully")
+      val component = startService(i)
+      Log.i(TAG, "OverlayConfirmService started component=$component")
     } catch (e: Exception) {
       Log.e(TAG, "startService(OverlayConfirmService) failed", e)
     }
@@ -256,13 +262,15 @@ class HotkeyAccessibilityService : AccessibilityService() {
 
   // ---- Pending screenshot flag (survives process death via SharedPreferences) ----
 
-  private fun setPendingScreenshot(reason: String) {
+  private fun setPendingScreenshot(reason: String): Long {
+    val ts = System.currentTimeMillis()
     val ok = getSharedPreferences("autoledger_internal", Context.MODE_PRIVATE)
       .edit()
-      .putLong("pendingScreenshotTs", System.currentTimeMillis())
+      .putLong("pendingScreenshotTs", ts)
       .putString("pendingScreenshotReason", reason)
       .commit()   // commit() is synchronous — survives immediate process death
     Log.d(TAG, "setPendingScreenshot reason=$reason committed=$ok")
+    return ts
   }
 
   private fun clearPendingScreenshot() {
@@ -290,6 +298,13 @@ class HotkeyAccessibilityService : AccessibilityService() {
     return reason
   }
 
+  private fun peekPendingScreenshot(): Pair<Long, String?> {
+    val prefs = getSharedPreferences("autoledger_internal", Context.MODE_PRIVATE)
+    val ts = prefs.getLong("pendingScreenshotTs", 0)
+    val reason = prefs.getString("pendingScreenshotReason", null)
+    return ts to reason
+  }
+
   // ---- Screenshot fallback ----
 
   private fun takeScreenshotFallback(reason: String, rootPkg: String): Boolean {
@@ -301,9 +316,24 @@ class HotkeyAccessibilityService : AccessibilityService() {
 
     // Save flag BEFORE calling takeScreenshot(). If the process is killed before
     // the callback fires, onServiceConnected() will see this flag and retry.
-    setPendingScreenshot(reason)
+    val requestTs = setPendingScreenshot(reason)
 
-    Log.i(TAG, "taking screenshot as fallback (reason=$reason rootPkg=$rootPkg)")
+    val root = rootInActiveWindow
+    val windowCount = try { windows?.size ?: 0 } catch (_: Exception) { 0 }
+    Log.i(
+      TAG,
+      "taking screenshot as fallback (reason=$reason rootPkg=$rootPkg rootNull=${root == null} windowCount=$windowCount)"
+    )
+    handler.postDelayed({
+      val (pendingTs, pendingReason) = peekPendingScreenshot()
+      if (pendingReason == reason && pendingTs == requestTs) {
+        val currentRoot = rootInActiveWindow
+        Log.w(
+          TAG,
+          "takeScreenshot callback still pending after 1500ms reason=$reason rootPkg=$rootPkg currentRootPkg=${currentRoot?.packageName} rootNull=${currentRoot == null}"
+        )
+      }
+    }, 1500)
     takeScreenshot(
       Display.DEFAULT_DISPLAY,
       mainExecutor,
@@ -338,7 +368,8 @@ class HotkeyAccessibilityService : AccessibilityService() {
             val i = Intent(this@HotkeyAccessibilityService, OverlayConfirmService::class.java)
             i.putExtra(Actions.EXTRA_TRIGGER_SOURCE, reason)
             i.putExtra(Actions.EXTRA_SCREENSHOT_MODE, true)
-            startService(i)
+            val component = startService(i)
+            Log.i(TAG, "OverlayConfirmService started from screenshot component=$component")
           } catch (e: Exception) {
             Log.e(TAG, "screenshot post-processing failed rootPkg=$rootPkg", e)
             handler.post {
@@ -386,8 +417,8 @@ class HotkeyAccessibilityService : AccessibilityService() {
       i.putExtra(Actions.EXTRA_MANUAL_MODE, true)
       i.putExtra(Actions.EXTRA_MANUAL_APP, rootPkg)
       i.putExtra(Actions.EXTRA_MANUAL_MESSAGE, "该应用限制无障碍读取，已进入手动录入模式")
-      startService(i)
-      Log.i(TAG, "manual overlay started for pkg=$rootPkg")
+      val component = startService(i)
+      Log.i(TAG, "manual overlay started for pkg=$rootPkg component=$component")
     } catch (e: Exception) {
       Log.e(TAG, "startService(OverlayConfirmService) manual failed", e)
     }
