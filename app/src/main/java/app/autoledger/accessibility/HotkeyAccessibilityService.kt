@@ -31,6 +31,21 @@ class HotkeyAccessibilityService : AccessibilityService() {
     @Volatile
     var isRunning: Boolean = false
       internal set
+
+    private fun resolveScreenshotErrorCode(name: String, fallback: Int): Int {
+      return try {
+        AccessibilityService::class.java.getField(name).getInt(null)
+      } catch (_: Exception) {
+        fallback
+      }
+    }
+
+    private val ERROR_TAKE_SCREENSHOT_INVALID_SCALE =
+      resolveScreenshotErrorCode("ERROR_TAKE_SCREENSHOT_INVALID_SCALE", -1)
+    private val ERROR_TAKE_SCREENSHOT_NO_ACCESS =
+      resolveScreenshotErrorCode("ERROR_TAKE_SCREENSHOT_NO_ACCESS", -1)
+    private val ERROR_TAKE_SCREENSHOT_NO_HARDWARE_BUFFER =
+      resolveScreenshotErrorCode("ERROR_TAKE_SCREENSHOT_NO_HARDWARE_BUFFER", -1)
   }
 
   private var volumeUpDownAt: Long = 0L
