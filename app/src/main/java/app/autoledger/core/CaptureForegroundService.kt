@@ -53,10 +53,18 @@ class CaptureForegroundService : Service() {
       }
       isRunning = true
       lastStartError = null
+      lastStartRequiresPermission = false
       Log.i(TAG, "startForeground ok")
+    } catch (e: SecurityException) {
+      isRunning = false
+      lastStartError = "${e.javaClass.simpleName}: ${e.message}"
+      lastStartRequiresPermission = true
+      Log.e(TAG, "startForeground failed", e)
+      stopSelf()
     } catch (e: Exception) {
       isRunning = false
       lastStartError = "${e.javaClass.simpleName}: ${e.message}"
+      lastStartRequiresPermission = false
       Log.e(TAG, "startForeground failed", e)
       stopSelf()
     }
@@ -80,9 +88,11 @@ class CaptureForegroundService : Service() {
     private const val NOTIF_ID = 1001
     @Volatile var isRunning: Boolean = false
     @Volatile var lastStartError: String? = null
+    @Volatile var lastStartRequiresPermission: Boolean = false
 
     fun start(ctx: Context) {
       lastStartError = null
+      lastStartRequiresPermission = false
       val i = Intent(ctx, CaptureForegroundService::class.java)
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
         ctx.startForegroundService(i)
