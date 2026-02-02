@@ -15,6 +15,7 @@ import android.widget.Toast
 import app.autoledger.core.Actions
 import app.autoledger.core.CapturePermissionStore
 import app.autoledger.core.ScreenshotStore
+import app.autoledger.core.ShizukuCapture
 import app.autoledger.overlay.OverlayConfirmService
 import app.autoledger.ui.CaptureActivity
 import app.autoledger.ui.ProjectionPermissionActivity
@@ -114,7 +115,11 @@ class HotkeyAccessibilityService : AccessibilityService() {
         TAG,
         "service reconnected with pending screenshot (reason=$pendingReason), switching to MediaProjection in 500ms rootPkg=${pendingRoot?.packageName} rootNull=${pendingRoot == null}"
       )
-      handler.postDelayed({ startMediaProjectionCapture(pendingReason) }, 500)
+      if (ShizukuCapture.captureToOverlay(this, pendingReason)) {
+        Log.i(TAG, "pending screenshot handled via Shizuku")
+      } else {
+        handler.postDelayed({ startMediaProjectionCapture(pendingReason) }, 500)
+      }
     }
   }
 
@@ -253,6 +258,10 @@ class HotkeyAccessibilityService : AccessibilityService() {
 
     if (extracted.isBlank()) {
       Log.w(TAG, "extracted text is blank for pkg=$rootPkg, falling back to screenshot")
+      if (ShizukuCapture.captureToOverlay(this, reason)) {
+        Log.i(TAG, "Shizuku capture started reason=$reason")
+        return
+      }
       if (reason.startsWith("qs_tile")) {
         Log.w(TAG, "qs_tile blank text: prefer MediaProjection capture")
         val started = startMediaProjectionCapture(reason)

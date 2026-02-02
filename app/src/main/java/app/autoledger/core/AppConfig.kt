@@ -39,6 +39,10 @@ class AppConfig(context: Context) {
       prefs.edit().putString("ledgerUri", v?.toString()).apply()
     }
 
+  var useShizukuCapture: Boolean
+    get() = prefs.getBoolean("useShizukuCapture", false)
+    set(v) { prefs.edit().putBoolean("useShizukuCapture", v).apply() }
+
   var hasCapturePermissionInMemory: Boolean
     get() = prefs.getBoolean("dummy", false)
     set(_) {}

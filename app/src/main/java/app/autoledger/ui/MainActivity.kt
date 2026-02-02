@@ -9,7 +9,9 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import app.autoledger.core.AppConfig
+import app.autoledger.core.ShizukuCapture
 import app.autoledger.databinding.ActivityMainBinding
+import rikka.shizuku.Shizuku
 
 class MainActivity : AppCompatActivity() {
 
@@ -17,6 +19,16 @@ class MainActivity : AppCompatActivity() {
 
   private lateinit var b: ActivityMainBinding
   private lateinit var cfg: AppConfig
+  private val shizukuRequestCode = 1101
+  private val shizukuPermissionListener = Shizuku.OnRequestPermissionResultListener { requestCode, grantResult ->
+    if (requestCode != shizukuRequestCode) return@OnRequestPermissionResultListener
+    if (grantResult == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+      toast("Shizuku 已授权")
+    } else {
+      toast("Shizuku 授权失败")
+    }
+    updateStatus()
+  }
 
   /**
    * Pick an existing ledger.csv.
@@ -56,6 +68,8 @@ class MainActivity : AppCompatActivity() {
     b.apiKey.setText(cfg.apiKey)
     b.model.setText(cfg.model)
 
+    Shizuku.addRequestPermissionResultListener(shizukuPermissionListener)
+
     b.saveConfig.setOnClickListener {
       cfg.baseUrl = b.baseUrl.text?.toString() ?: ""
       cfg.apiKey = b.apiKey.text?.toString() ?: ""
@@ -80,6 +94,33 @@ class MainActivity : AppCompatActivity() {
       )
     }
 
+    b.useShizuku.isChecked = cfg.useShizukuCapture
+    b.useShizuku.setOnCheckedChangeListener { _, isChecked ->
+      if (isChecked && !ShizukuCapture.isAvailable()) {
+        toast("未检测到 Shizuku，请先启动 Shizuku")
+        b.useShizuku.isChecked = false
+        return@setOnCheckedChangeListener
+      }
+      cfg.useShizukuCapture = isChecked
+      if (isChecked && ShizukuCapture.isAvailable() && !ShizukuCapture.hasPermission()) {
+        toast("需要在 Shizuku 中授权本应用")
+      }
+      updateStatus()
+    }
+
+    b.requestShizuku.setOnClickListener {
+      if (!ShizukuCapture.isAvailable()) {
+        toast("未检测到 Shizuku，请先启动 Shizuku")
+        return@setOnClickListener
+      }
+      if (Shizuku.checkSelfPermission() == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+        toast("Shizuku 已授权")
+        updateStatus()
+        return@setOnClickListener
+      }
+      Shizuku.requestPermission(shizukuRequestCode)
+    }
+
     // 主界面已移除截图/悬浮按钮相关入口。
 
     b.viewStats.setOnClickListener {
@@ -90,14 +131,27 @@ class MainActivity : AppCompatActivity() {
     updateStatus()
   }
 
+  override fun onDestroy() {
+    try {
+      Shizuku.removeRequestPermissionResultListener(shizukuPermissionListener)
+    } catch (_: Exception) {}
+    super.onDestroy()
+  }
+
   private fun updateStatus() {
     val ledgerOk = cfg.ledgerUri != null
     val keyOk = cfg.apiKey.isNotBlank()
+    val shizukuAvailable = ShizukuCapture.isAvailable()
+    val shizukuPerm = ShizukuCapture.hasPermission()
+    val shizukuEnabled = cfg.useShizukuCapture
     b.status.text = "状态：\n" +
       "- Base URL：${cfg.baseUrl}\n" +
       "- 模型：${cfg.model}\n" +
       "- API Key：${if (keyOk) "已设置" else "未设置"}\n" +
-      "- 账本文件：${if (ledgerOk) "已选择" else "未选择"}\n"
+      "- 账本文件：${if (ledgerOk) "已选择" else "未选择"}\n" +
+      "- Shizuku：${if (shizukuEnabled) "已启用" else "未启用"} / " +
+      "${if (shizukuAvailable) "可用" else "未运行"} / " +
+      "${if (shizukuPerm) "已授权" else "未授权"}\n"
   }
 
   private fun toast(s: String) = Toast.makeText(this, s, Toast.LENGTH_SHORT).show()
