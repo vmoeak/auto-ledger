@@ -15,8 +15,11 @@ object ShizukuCapture {
 
   fun isAvailable(): Boolean {
     return try {
-      val binder = Shizuku.getBinder() ?: return false
-      binder.isBinderAlive || Shizuku.pingBinder()
+      val binder = Shizuku.getBinder()
+      val alive = binder?.isBinderAlive == true
+      val ping = try { Shizuku.pingBinder() } catch (_: Throwable) { false }
+      Log.i(TAG, "isAvailable: binder=${binder != null} alive=$alive ping=$ping")
+      alive || ping
     } catch (_: Throwable) {
       false
     }
@@ -24,7 +27,9 @@ object ShizukuCapture {
 
   fun hasPermission(): Boolean {
     return try {
-      Shizuku.checkSelfPermission() == android.content.pm.PackageManager.PERMISSION_GRANTED
+      val granted = Shizuku.checkSelfPermission() == android.content.pm.PackageManager.PERMISSION_GRANTED
+      Log.i(TAG, "hasPermission: granted=$granted")
+      granted
     } catch (_: Throwable) {
       false
     }
