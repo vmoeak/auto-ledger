@@ -43,12 +43,18 @@ class HotkeyAccessibilityService : AccessibilityService() {
       }
     }
 
+    private val ERROR_TAKE_SCREENSHOT_INTERVAL_TIME_SHORT =
+      resolveScreenshotErrorCode("ERROR_TAKE_SCREENSHOT_INTERVAL_TIME_SHORT", -1001)
+    private val ERROR_TAKE_SCREENSHOT_INVALID_DISPLAY =
+      resolveScreenshotErrorCode("ERROR_TAKE_SCREENSHOT_INVALID_DISPLAY", -1002)
     private val ERROR_TAKE_SCREENSHOT_INVALID_SCALE =
-      resolveScreenshotErrorCode("ERROR_TAKE_SCREENSHOT_INVALID_SCALE", -1)
+      resolveScreenshotErrorCode("ERROR_TAKE_SCREENSHOT_INVALID_SCALE", -1003)
     private val ERROR_TAKE_SCREENSHOT_NO_ACCESS =
-      resolveScreenshotErrorCode("ERROR_TAKE_SCREENSHOT_NO_ACCESS", -1)
+      resolveScreenshotErrorCode("ERROR_TAKE_SCREENSHOT_NO_ACCESS", -1004)
     private val ERROR_TAKE_SCREENSHOT_NO_HARDWARE_BUFFER =
-      resolveScreenshotErrorCode("ERROR_TAKE_SCREENSHOT_NO_HARDWARE_BUFFER", -1)
+      resolveScreenshotErrorCode("ERROR_TAKE_SCREENSHOT_NO_HARDWARE_BUFFER", -1005)
+    private val ERROR_TAKE_SCREENSHOT_INTERNAL_ERROR =
+      resolveScreenshotErrorCode("ERROR_TAKE_SCREENSHOT_INTERNAL_ERROR", -1006)
   }
 
   private var volumeUpDownAt: Long = 0L
@@ -398,11 +404,16 @@ class HotkeyAccessibilityService : AccessibilityService() {
             "takeScreenshot context rootNull=${root == null} rootPkg=${root?.packageName} rootClass=${root?.className} " +
               "rootChildCount=${root?.childCount ?: -1} rootWindowId=${root?.windowId ?: -1}"
           )
-          if (errorCode == ERROR_TAKE_SCREENSHOT_NO_ACCESS && startMediaProjectionCapture(reason)) {
+          val shouldTryMediaProjection = errorCode == ERROR_TAKE_SCREENSHOT_NO_ACCESS
+            || errorCode == ERROR_TAKE_SCREENSHOT_NO_HARDWARE_BUFFER
+            || errorCode == ERROR_TAKE_SCREENSHOT_INTERNAL_ERROR
+            || errorCode == ERROR_TAKE_SCREENSHOT_INVALID_DISPLAY
+            || errorCode == ERROR_TAKE_SCREENSHOT_INVALID_SCALE
+          if (shouldTryMediaProjection && startMediaProjectionCapture(reason)) {
             handler.post {
               Toast.makeText(
                 this@HotkeyAccessibilityService,
-                "截图权限不足，正在尝试使用屏幕录制授权",
+                "截图失败，正在尝试使用屏幕录制授权",
                 Toast.LENGTH_SHORT
               ).show()
             }
