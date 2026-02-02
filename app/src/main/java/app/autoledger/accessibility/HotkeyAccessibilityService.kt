@@ -51,9 +51,13 @@ class HotkeyAccessibilityService : AccessibilityService() {
   private var volumeUpDownAt: Long = 0L
   private var longPressTriggered: Boolean = false
   private var lastTriggerAt: Long = 0L
+  private var screenshotCallbackPending: Boolean = false
+  private var screenshotTimeoutToken: Long = 0L
+  private var screenshotTimeoutRunnable: Runnable? = null
 
   private val longPressMs = 650L
   private val debounceMs = 2500L
+  private val screenshotTimeoutMs = 3500L
 
   private val longPressRunnable = Runnable {
     // Still held?
@@ -315,11 +319,27 @@ class HotkeyAccessibilityService : AccessibilityService() {
       TAG,
       "taking screenshot as fallback (reason=$reason rootPkg=$rootPkg rootNull=${root == null} windowCount=$windowCount)"
     )
+    screenshotCallbackPending = true
+    screenshotTimeoutToken = System.currentTimeMillis()
+    screenshotTimeoutRunnable?.let { handler.removeCallbacks(it) }
+    val timeoutToken = screenshotTimeoutToken
+    val timeoutRunnable = Runnable {
+      if (screenshotCallbackPending && screenshotTimeoutToken == timeoutToken) {
+        Log.e(TAG, "takeScreenshot timed out after ${screenshotTimeoutMs}ms, showing manual entry")
+        screenshotCallbackPending = false
+        clearPendingScreenshot()
+        showManualEntry(rootPkg)
+      }
+    }
+    screenshotTimeoutRunnable = timeoutRunnable
+    handler.postDelayed(timeoutRunnable, screenshotTimeoutMs)
     takeScreenshot(
       Display.DEFAULT_DISPLAY,
       mainExecutor,
       object : TakeScreenshotCallback {
         override fun onSuccess(result: ScreenshotResult) {
+          screenshotCallbackPending = false
+          screenshotTimeoutRunnable?.let { handler.removeCallbacks(it) }
           clearPendingScreenshot()
           Log.i(TAG, "screenshot success rootPkg=$rootPkg")
           try {
@@ -360,13 +380,29 @@ class HotkeyAccessibilityService : AccessibilityService() {
         }
 
         override fun onFailure(errorCode: Int) {
+          screenshotCallbackPending = false
+          screenshotTimeoutRunnable?.let { handler.removeCallbacks(it) }
           clearPendingScreenshot()
-          Log.e(TAG, "takeScreenshot failed errorCode=$errorCode reason=$reason rootPkg=$rootPkg")
+          Log.e(
+            TAG,
+            "takeScreenshot failed errorCode=$errorCode reason=$reason rootPkg=$rootPkg api=${Build.VERSION.SDK_INT} " +
+              "display=${Display.DEFAULT_DISPLAY} windowCount=${try { windows?.size ?: 0 } catch (_: Exception) { -1 }}"
+          )
           logScreenshotErrorDetails(errorCode)
-          if (errorCode == ERROR_TAKE_SCREENSHOT_INTERVAL_TIME_SHORT
+          val root = rootInActiveWindow
+          Log.w(
+            TAG,
+            "takeScreenshot context rootNull=${root == null} rootPkg=${root?.packageName} rootClass=${root?.className} " +
+              "rootChildCount=${root?.childCount ?: -1} rootWindowId=${root?.windowId ?: -1}"
+          )
+          val shouldShowManualEntry = errorCode == ERROR_TAKE_SCREENSHOT_INTERVAL_TIME_SHORT
             || errorCode == ERROR_TAKE_SCREENSHOT_INVALID_DISPLAY
-            || errorCode == ERROR_TAKE_SCREENSHOT_INVALID_SCALE) {
-            Log.w(TAG, "takeScreenshot failed with retryable errorCode=$errorCode, showing manual entry")
+            || errorCode == ERROR_TAKE_SCREENSHOT_INVALID_SCALE
+            || errorCode == ERROR_TAKE_SCREENSHOT_NO_ACCESS
+            || errorCode == ERROR_TAKE_SCREENSHOT_NO_HARDWARE_BUFFER
+            || errorCode == ERROR_TAKE_SCREENSHOT_INTERNAL_ERROR
+          if (shouldShowManualEntry) {
+            Log.w(TAG, "takeScreenshot failed errorCode=$errorCode, showing manual entry")
             showManualEntry(rootPkg)
           }
           handler.post {
