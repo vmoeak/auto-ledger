@@ -82,7 +82,7 @@ class HotkeyAccessibilityService : AccessibilityService() {
     val pendingReason = consumePendingScreenshot()
     if (pendingReason != null) {
       Log.i(TAG, "service reconnected with pending screenshot (reason=$pendingReason), retrying in 500ms")
-      handler.postDelayed({ takeScreenshotFallback(pendingReason) }, 500)
+      handler.postDelayed({ takeScreenshotFallback(pendingReason, rootInActiveWindow?.packageName?.toString().orEmpty()) }, 500)
     }
   }
 
@@ -221,7 +221,10 @@ class HotkeyAccessibilityService : AccessibilityService() {
 
     if (extracted.isBlank()) {
       Log.w(TAG, "extracted text is blank for pkg=$rootPkg, falling back to screenshot")
-      takeScreenshotFallback(reason)
+      if (!takeScreenshotFallback(reason, rootPkg)) {
+        Log.w(TAG, "screenshot fallback not possible, showing manual entry overlay")
+        showManualEntry(rootPkg)
+      }
       return
     }
 
@@ -274,32 +277,32 @@ class HotkeyAccessibilityService : AccessibilityService() {
 
   // ---- Screenshot fallback ----
 
-  private fun takeScreenshotFallback(reason: String) {
+  private fun takeScreenshotFallback(reason: String, rootPkg: String): Boolean {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
-      Log.w(TAG, "takeScreenshot requires API 30+, current=${Build.VERSION.SDK_INT}")
+      Log.w(TAG, "takeScreenshot requires API 30+, current=${Build.VERSION.SDK_INT} reason=$reason rootPkg=$rootPkg")
       Toast.makeText(this, "当前页面无法读取文字，且系统版本过低不支持截图回退", Toast.LENGTH_SHORT).show()
-      return
+      return false
     }
 
     // Save flag BEFORE calling takeScreenshot(). If the process is killed before
     // the callback fires, onServiceConnected() will see this flag and retry.
     setPendingScreenshot(reason)
 
-    Log.i(TAG, "taking screenshot as fallback (reason=$reason)")
+    Log.i(TAG, "taking screenshot as fallback (reason=$reason rootPkg=$rootPkg)")
     takeScreenshot(
       Display.DEFAULT_DISPLAY,
       mainExecutor,
       object : TakeScreenshotCallback {
         override fun onSuccess(result: ScreenshotResult) {
           clearPendingScreenshot()
-          Log.i(TAG, "screenshot success")
+          Log.i(TAG, "screenshot success rootPkg=$rootPkg")
           try {
             val hwBuf = result.hardwareBuffer
             val colorSpace = result.colorSpace
             val hardwareBmp = Bitmap.wrapHardwareBuffer(hwBuf, colorSpace)
             hwBuf.close()
             if (hardwareBmp == null) {
-              Log.e(TAG, "wrapHardwareBuffer returned null")
+              Log.e(TAG, "wrapHardwareBuffer returned null rootPkg=$rootPkg")
               handler.post {
                 Toast.makeText(this@HotkeyAccessibilityService, "截图失败", Toast.LENGTH_SHORT).show()
               }
@@ -309,20 +312,20 @@ class HotkeyAccessibilityService : AccessibilityService() {
             val swBmp = hardwareBmp.copy(Bitmap.Config.ARGB_8888, false)
             hardwareBmp.recycle()
             if (swBmp == null) {
-              Log.e(TAG, "bitmap copy to software failed")
+              Log.e(TAG, "bitmap copy to software failed rootPkg=$rootPkg")
               handler.post {
                 Toast.makeText(this@HotkeyAccessibilityService, "截图失败", Toast.LENGTH_SHORT).show()
               }
               return
             }
-            Log.i(TAG, "screenshot bitmap ${swBmp.width}x${swBmp.height}, starting overlay in screenshot mode")
+            Log.i(TAG, "screenshot bitmap ${swBmp.width}x${swBmp.height}, starting overlay in screenshot mode rootPkg=$rootPkg")
             ScreenshotStore.put(swBmp)
             val i = Intent(this@HotkeyAccessibilityService, OverlayConfirmService::class.java)
             i.putExtra(Actions.EXTRA_TRIGGER_SOURCE, reason)
             i.putExtra(Actions.EXTRA_SCREENSHOT_MODE, true)
             startService(i)
           } catch (e: Exception) {
-            Log.e(TAG, "screenshot post-processing failed", e)
+            Log.e(TAG, "screenshot post-processing failed rootPkg=$rootPkg", e)
             handler.post {
               Toast.makeText(this@HotkeyAccessibilityService, "截图处理失败：${e.message}", Toast.LENGTH_SHORT).show()
             }
@@ -331,12 +334,47 @@ class HotkeyAccessibilityService : AccessibilityService() {
 
         override fun onFailure(errorCode: Int) {
           clearPendingScreenshot()
-          Log.e(TAG, "takeScreenshot failed errorCode=$errorCode")
+          Log.e(TAG, "takeScreenshot failed errorCode=$errorCode reason=$reason rootPkg=$rootPkg")
+          logScreenshotErrorDetails(errorCode)
+          if (errorCode == ERROR_TAKE_SCREENSHOT_INTERVAL_TIME_SHORT
+            || errorCode == ERROR_TAKE_SCREENSHOT_INVALID_DISPLAY
+            || errorCode == ERROR_TAKE_SCREENSHOT_INVALID_SCALE) {
+            Log.w(TAG, "takeScreenshot failed with retryable errorCode=$errorCode, showing manual entry")
+            showManualEntry(rootPkg)
+          }
           handler.post {
             Toast.makeText(this@HotkeyAccessibilityService, "截图失败 (错误码: $errorCode)", Toast.LENGTH_SHORT).show()
           }
         }
       }
     )
+    return true
+  }
+
+  private fun logScreenshotErrorDetails(errorCode: Int) {
+    val detail = when (errorCode) {
+      ERROR_TAKE_SCREENSHOT_INTERVAL_TIME_SHORT -> "interval time too short"
+      ERROR_TAKE_SCREENSHOT_INVALID_DISPLAY -> "invalid display"
+      ERROR_TAKE_SCREENSHOT_INVALID_SCALE -> "invalid scale"
+      ERROR_TAKE_SCREENSHOT_NO_ACCESS -> "no access"
+      ERROR_TAKE_SCREENSHOT_NO_HARDWARE_BUFFER -> "no hardware buffer"
+      ERROR_TAKE_SCREENSHOT_INTERNAL_ERROR -> "internal error"
+      else -> "unknown"
+    }
+    Log.w(TAG, "takeScreenshot error detail=$detail (code=$errorCode)")
+  }
+
+  private fun showManualEntry(rootPkg: String) {
+    try {
+      val i = Intent(this, OverlayConfirmService::class.java)
+      i.putExtra(Actions.EXTRA_TRIGGER_SOURCE, "manual")
+      i.putExtra(Actions.EXTRA_MANUAL_MODE, true)
+      i.putExtra(Actions.EXTRA_MANUAL_APP, rootPkg)
+      i.putExtra(Actions.EXTRA_MANUAL_MESSAGE, "该应用限制无障碍读取，已进入手动录入模式")
+      startService(i)
+      Log.i(TAG, "manual overlay started for pkg=$rootPkg")
+    } catch (e: Exception) {
+      Log.e(TAG, "startService(OverlayConfirmService) manual failed", e)
+    }
   }
 }

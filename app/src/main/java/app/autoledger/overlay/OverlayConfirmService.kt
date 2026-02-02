@@ -41,7 +41,8 @@ class OverlayConfirmService : Service() {
   override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
     val triggerSource = intent?.getStringExtra(Actions.EXTRA_TRIGGER_SOURCE) ?: "(unknown)"
     val screenshotMode = intent?.getBooleanExtra(Actions.EXTRA_SCREENSHOT_MODE, false) == true
-    Log.i(TAG, "onStartCommand src=$triggerSource screenshotMode=$screenshotMode")
+    val manualMode = intent?.getBooleanExtra(Actions.EXTRA_MANUAL_MODE, false) == true
+    Log.i(TAG, "onStartCommand src=$triggerSource screenshotMode=$screenshotMode manualMode=$manualMode")
 
     if (screenshotMode) {
       val bmp = ScreenshotStore.take()
@@ -54,6 +55,15 @@ class OverlayConfirmService : Service() {
       Log.i(TAG, "screenshot bitmap ${bmp.width}x${bmp.height}")
       showOrReplaceCard()
       parseAndBindScreenshot(bmp)
+      return START_NOT_STICKY
+    }
+
+    if (manualMode) {
+      val appName = intent?.getStringExtra(Actions.EXTRA_MANUAL_APP).orEmpty()
+      val message = intent?.getStringExtra(Actions.EXTRA_MANUAL_MESSAGE)
+        ?: "\u5f53\u524d\u9875\u9762\u65e0\u6cd5\u8bfb\u53d6\u5185\u5bb9\uff0c\u8bf7\u624b\u52a8\u586b\u5199\u652f\u51fa\u4fe1\u606f"
+      showOrReplaceCard()
+      bindManualFields(appName, message)
       return START_NOT_STICKY
     }
 
@@ -71,6 +81,57 @@ class OverlayConfirmService : Service() {
     parseAndBind(extractedText)
 
     return START_NOT_STICKY
+  }
+
+  private fun bindManualFields(appName: String, message: String) {
+    val cfg = AppConfig(this)
+    if (cfg.ledgerUri == null) {
+      toast("\u672a\u9009\u62e9\u8d26\u672c\u6587\u4ef6\uff08ledger.csv\uff09")
+      removeCard(); stopSelf(); return
+    }
+
+    val v = rootView ?: return
+    val subtitle = v.findViewById<TextView>(R.id.subtitle)
+    val saveBtn = v.findViewById<Button>(R.id.saveBtn)
+
+    val timeEt = v.findViewById<EditText>(R.id.timeLocal)
+    val appEt = v.findViewById<EditText>(R.id.app)
+    val currencyEt = v.findViewById<EditText>(R.id.currency)
+    val noteEt = v.findViewById<EditText>(R.id.note)
+    val confTv = v.findViewById<TextView>(R.id.confidence)
+
+    val now = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
+    subtitle.text = message
+    timeEt.setText(now)
+    appEt.setText(appName)
+    currencyEt.setText("CNY")
+    confTv.text = "\u7f6e\u4fe1\u5ea6\uff1a"
+    noteEt.setText("\u4f4e\u53ef\u8bfb\u6743\u9650\u5e94\u7528\uff0c\u624b\u52a8\u5f55\u5165")
+
+    saveBtn.isEnabled = true
+    saveBtn.setOnClickListener {
+      try {
+        val ledgerUri = cfg.ledgerUri ?: return@setOnClickListener
+        LedgerWriter.ensureHeader(this, ledgerUri)
+        val row = listOf(
+          LedgerWriter.normalizeTime(timeEt.text?.toString() ?: now),
+          (appEt.text?.toString() ?: appName),
+          (v.findViewById<EditText>(R.id.amount).text?.toString() ?: ""),
+          (currencyEt.text?.toString() ?: "CNY"),
+          (v.findViewById<EditText>(R.id.merchant).text?.toString() ?: ""),
+          "", // category
+          (noteEt.text?.toString() ?: ""),
+          "",
+          ""
+        ).joinToString(",")
+        LedgerWriter.appendRow(this, ledgerUri, row)
+        toast("\u5df2\u4fdd\u5b58")
+      } catch (e: Exception) {
+        Log.e(TAG, "manual save failed", e)
+        toast("\u4fdd\u5b58\u5931\u8d25\uff1a${e.message}")
+      }
+      removeCard(); stopSelf()
+    }
   }
 
   private fun showOrReplaceCard() {
