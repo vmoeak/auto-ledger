@@ -1,17 +1,17 @@
 package app.autoledger.ui
 
-import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.media.projection.MediaProjectionManager
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
+import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
 import app.autoledger.core.Actions
 import app.autoledger.core.CapturePermissionStore
 
-class ProjectionPermissionActivity : Activity() {
+class ProjectionPermissionActivity : ComponentActivity() {
 
   private val TAG = "AutoLedger/ProjectionPermission"
 
