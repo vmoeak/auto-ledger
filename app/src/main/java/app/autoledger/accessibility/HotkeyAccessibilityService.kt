@@ -13,8 +13,11 @@ import android.view.accessibility.AccessibilityEvent
 import android.accessibilityservice.AccessibilityService
 import android.widget.Toast
 import app.autoledger.core.Actions
+import app.autoledger.core.CapturePermissionStore
 import app.autoledger.core.ScreenshotStore
 import app.autoledger.overlay.OverlayConfirmService
+import app.autoledger.ui.CaptureActivity
+import app.autoledger.ui.ProjectionPermissionActivity
 
 /**
  * Global hotkey: long-press VOLUME_UP to trigger capture.
@@ -395,6 +398,16 @@ class HotkeyAccessibilityService : AccessibilityService() {
             "takeScreenshot context rootNull=${root == null} rootPkg=${root?.packageName} rootClass=${root?.className} " +
               "rootChildCount=${root?.childCount ?: -1} rootWindowId=${root?.windowId ?: -1}"
           )
+          if (errorCode == ERROR_TAKE_SCREENSHOT_NO_ACCESS && startMediaProjectionCapture(reason)) {
+            handler.post {
+              Toast.makeText(
+                this@HotkeyAccessibilityService,
+                "截图权限不足，正在尝试使用屏幕录制授权",
+                Toast.LENGTH_SHORT
+              ).show()
+            }
+            return
+          }
           val shouldShowManualEntry = errorCode == ERROR_TAKE_SCREENSHOT_INTERVAL_TIME_SHORT
             || errorCode == ERROR_TAKE_SCREENSHOT_INVALID_DISPLAY
             || errorCode == ERROR_TAKE_SCREENSHOT_INVALID_SCALE
@@ -425,6 +438,25 @@ class HotkeyAccessibilityService : AccessibilityService() {
       else -> "unknown"
     }
     Log.w(TAG, "takeScreenshot error detail=$detail (code=$errorCode)")
+  }
+
+  private fun startMediaProjectionCapture(reason: String): Boolean {
+    val resultData = CapturePermissionStore.resultData
+    val resultCode = CapturePermissionStore.resultCode
+    val intent = if (resultData != null && resultCode != null) {
+      Intent(this, CaptureActivity::class.java)
+    } else {
+      Intent(this, ProjectionPermissionActivity::class.java)
+    }
+    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    intent.putExtra(Actions.EXTRA_TRIGGER_SOURCE, reason)
+    return try {
+      startActivity(intent)
+      true
+    } catch (e: Exception) {
+      Log.e(TAG, "startMediaProjectionCapture failed", e)
+      false
+    }
   }
 
   private fun showManualEntry(rootPkg: String) {
