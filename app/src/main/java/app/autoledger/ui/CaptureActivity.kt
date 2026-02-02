@@ -102,6 +102,11 @@ class CaptureActivity : AppCompatActivity() {
 
   private fun waitForFgsThenCapture(resultCode: Int, resultData: android.content.Intent, startedAt: Long) {
     val startError = CaptureForegroundService.lastStartError
+    if (CaptureForegroundService.lastStartRequiresPermission) {
+      Log.e(TAG, "foreground service denied: $startError")
+      handleProjectionInvalid("截图权限失效，请重新授权")
+      return
+    }
     if (startError != null) {
       Log.e(TAG, "foreground service failed: $startError")
       toast("Foreground service failed: $startError")
