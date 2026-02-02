@@ -35,6 +35,7 @@ class CaptureActivity : AppCompatActivity() {
 
   private lateinit var cfg: AppConfig
   private var triggerSource: String = "(unknown)"
+  private val fgsWaitTimeoutMs = 1500L
 
   override fun onDestroy() {
     Log.i(TAG, "onDestroy: stopping foreground service")
@@ -93,9 +94,34 @@ class CaptureActivity : AppCompatActivity() {
     }
 
     Log.i(TAG, "starting captureOnce (delayed 200ms to ensure FGS is in foreground)")
+    val startedAt = System.currentTimeMillis()
     Handler(Looper.getMainLooper()).postDelayed({
-      captureOnce(resultCode, resultData)
+      waitForFgsThenCapture(resultCode, resultData, startedAt)
     }, 200)
+  }
+
+  private fun waitForFgsThenCapture(resultCode: Int, resultData: android.content.Intent, startedAt: Long) {
+    val startError = CaptureForegroundService.lastStartError
+    if (startError != null) {
+      Log.e(TAG, "foreground service failed: $startError")
+      toast("Foreground service failed: $startError")
+      finish()
+      return
+    }
+    if (CaptureForegroundService.isRunning) {
+      captureOnce(resultCode, resultData)
+      return
+    }
+    val elapsed = System.currentTimeMillis() - startedAt
+    if (elapsed >= fgsWaitTimeoutMs) {
+      Log.e(TAG, "foreground service not ready after ${elapsed}ms")
+      toast("Foreground service not ready. Try again.")
+      finish()
+      return
+    }
+    Handler(Looper.getMainLooper()).postDelayed({
+      waitForFgsThenCapture(resultCode, resultData, startedAt)
+    }, 100)
   }
 
   private fun captureOnce(resultCode: Int, resultData: android.content.Intent) {
